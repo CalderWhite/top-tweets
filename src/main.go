@@ -9,7 +9,20 @@ import (
     "encoding/json"
     "regexp"
     "strings"
+    trie "github.com/dghubble/trie"
 )
+
+/**
+ * Idea: Remove words that are present in larger moving averages to see what is currently trending.
+ * For example, take the 3 day moving average of words and blacklist them all.
+ * This should catch things like the laughing emoji, stopwords, etc. This way we don't have to hardcode
+ * blacklisted words.
+ * 
+ * Then, what is left are the words that are not used often.
+ */
+
+ // the amount of tweets required to trigger a push to the wordDiffQueue
+const AGG_PERIOD int = 100
 
 type StreamDataSchema struct {
     Data struct {
@@ -20,8 +33,14 @@ type StreamDataSchema struct {
     } `json:"data"`
 }
 
+type WordPair struct {
+    Word string
+    Count int
+}
+
+var stopWords *trie.RuneTrie = NewStopWordsTrie()
 var wordDiffQueue *CircularQueue = NewCircularQueue(300)
-var diff *WordDiff = NewWordDiff()
+var globalDiff *WordDiff = NewWordDiff()
 
 func streamTweets(tweets chan<- StreamDataSchema) {
     client := &http.Client{}
@@ -47,6 +66,7 @@ func streamTweets(tweets chan<- StreamDataSchema) {
         data := StreamDataSchema{}
         if err := json.Unmarshal(line, &data); err != nil {
             log.Println("failed to unmarshal bytes:", err)
+            log.Println(string(line))
             return
         }
 
@@ -54,22 +74,50 @@ func streamTweets(tweets chan<- StreamDataSchema) {
     }
 }
 
+// this may include removing the @ symbol in the future, among other things.
+func sanatizeWord(word string) string {
+    return strings.ToLower(word)
+}
+
+func isValidWord(word string) bool {
+    stopWord := stopWords.Get(word)
+    if stopWord != nil {
+        return false
+    }
+
+    // primitive filter to get rid of uninteresting words.
+    // more sophisticated algorithm idea at the top.
+    if len(word) < 3 {
+        return false
+    }
+
+    return true
+}
+
 func processTweets(tweets <-chan StreamDataSchema) {
-    //diff := NewWordDiff()
+    diff := NewWordDiff()
     urlRule := regexp.MustCompile(`((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)`)
-    delimRule := regexp.MustCompile(` |"|\.|\,|\!|\?|\:|、`)
+    delimRule := regexp.MustCompile(` |"|\.|\,|\!|\?|\:|、|\n`)
+
+    tweetCount := 0
     for tweet := range tweets {
         // this is inefficient. If our process is slowing down, make this is a custom parser.
         sanatizedText := urlRule.ReplaceAllString(tweet.Data.Text, "")
         tokens := delimRule.Split(sanatizedText, -1)
         for _, token := range tokens {
-            token = strings.ToLower(token)
-            //log.Println(token)
-            val, ok := diff.trie.Get(token).(int)
-            if !ok {
-                val = 0
+            word := sanatizeWord(token)
+            validWord := isValidWord(word)
+            if (validWord) {
+                diff.IncWord(word)
             }
-            diff.trie.Put(token, val + 1)
+
+            tweetCount += 1
+            tweetCount %= AGG_PERIOD
+
+            if tweetCount == 0 {
+                globalDiff.Add(diff)
+                diff = NewWordDiff()
+            }
         }
     }
 }
@@ -85,21 +133,51 @@ func tweetsWorker() {
     }
 }
 
+func getTop(topAmount int) []WordPair {
+    top := make([]WordPair, topAmount)
+    globalDiff.trie.Walk(func(word string, _count interface{}) error {
+        count, ok := _count.(int)
+        if !ok {
+            return nil
+        }
+
+        if count > top[0].Count {
+            for i := 0; i < len(top); i++ {
+                if count <= top[i].Count {
+                    // subtract one since the previous index is the one we are greater than
+                    i -= 1;
+
+                    // shift all those less than <count> back 1
+                    copy(top[:i], top[1:i+1])
+                    // overwrite the current element
+                    top[i] = WordPair{Word: word, Count: count}
+                    return nil
+                } else if i == len(top) - 1 {
+                    // shift all those less than <count> back 1
+                    copy(top[:i], top[1:i+1])
+                    // overwrite the current element
+                    top[i] = WordPair{Word: word, Count: count}
+                    return nil
+                }
+            }
+        }
+
+        return nil
+    })
+
+    return top
+}
+
 func main() {
     go tweetsWorker()
 
     for {
         log.Println("Table:")
-        diff.trie.Walk(func(key string, value interface{}) error {
-            val, ok := value.(int)
-            if ok {
-                if val > 10 {
-                    log.Println(key, value)
-                }
-            }
-
-            return nil
-        })
+        log.Println("-----------------------------")
+        topTweets := getTop(10)
+        for _, wordPair := range topTweets {
+            log.Println(wordPair)
+        }
         time.Sleep(1 * time.Second)
     }
 }
