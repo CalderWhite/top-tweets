@@ -9,6 +9,7 @@ import (
     "encoding/json"
     "regexp"
     "strings"
+    "io/ioutil"
     trie "github.com/dghubble/trie"
 )
 
@@ -52,7 +53,13 @@ func streamTweets(tweets chan<- StreamDataSchema) {
     resp, err := client.Do(req)
 
     if err != nil {
-        log.Println("Println performing request to twitter stream:", err)
+        log.Println("Error performing request to twitter stream:", err)
+        return
+    }
+
+    if resp.StatusCode != 200 {
+        body, _ := ioutil.ReadAll(resp.Body)
+        log.Fatal("Did not get 200 OK response from twitter API.", string(body))
         return
     }
 
