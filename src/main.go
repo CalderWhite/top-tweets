@@ -19,10 +19,13 @@ import (
  * blacklisted words.
  * 
  * Then, what is left are the words that are not used often.
+ *
+ * This will also help with supporting all languages. I need stopwords for every single language on twitter
+ * without this method.
  */
 
  // the amount of tweets required to trigger a push to the wordDiffQueue
-const AGG_PERIOD int = 100
+const AGG_PERIOD int = 300
 
 type StreamDataSchema struct {
     Data struct {
@@ -59,15 +62,16 @@ func streamTweets(tweets chan<- StreamDataSchema) {
         line, err := reader.ReadBytes('\n')
         if err != nil {
             log.Println("Got error while reading bytes:", err)
-            // exit out so we can restart the stream
-            return
+            // try to read again. Usually it is because the twitter API had nothing to give.
+            continue
         }
 
         data := StreamDataSchema{}
         if err := json.Unmarshal(line, &data); err != nil {
             log.Println("failed to unmarshal bytes:", err)
             log.Println(string(line))
-            return
+            // try to read again. Usually it is because the twitter API had nothing to give.
+            continue
         }
 
         tweets <- data
@@ -115,7 +119,17 @@ func processTweets(tweets <-chan StreamDataSchema) {
             tweetCount %= AGG_PERIOD
 
             if tweetCount == 0 {
+                if (wordDiffQueue.IsFull()) {
+                    oldestDiff, ok := wordDiffQueue.Dequeue().(*WordDiff)
+                    if !ok {
+                        log.Panic("Could not convert dequeued object to WordDiff.")
+                    }
+                    globalDiff.Sub(oldestDiff)
+                }
+
+                wordDiffQueue.Enqueue(diff)
                 globalDiff.Add(diff)
+
                 diff = NewWordDiff()
             }
         }

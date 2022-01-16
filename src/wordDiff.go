@@ -2,12 +2,16 @@ package main
 
 import (
     "log"
+    "sync"
     trie "github.com/dghubble/trie"
 )
 
 // one definition file since this is used in 2 places
 type WordDiff struct {
     trie *trie.RuneTrie
+    // the trie package won't let me concurrently read and write, so I must use a mutux
+    // NOTE: I don't actually care about this race condition. It will become correct over time.
+    Lock sync.Mutex
 }
 
 func NewWordDiff() *WordDiff {
@@ -19,6 +23,11 @@ func NewWordDiff() *WordDiff {
 
 // adds all the counts from src to dst
 func (dst *WordDiff) Add(src *WordDiff) {
+    dst.Lock.Lock()
+    src.Lock.Lock()
+    defer dst.Lock.Unlock()
+    defer src.Lock.Unlock()
+
     src.trie.Walk(func(word string, _count interface{}) error {
         count, ok := _count.(int)
         if !ok {
@@ -37,6 +46,13 @@ func (dst *WordDiff) Add(src *WordDiff) {
 
 // subtracts all the counts from src to dst
 func (dst *WordDiff) Sub(src *WordDiff) {
+    dst.Lock.Lock()
+    src.Lock.Lock()
+    defer dst.Lock.Unlock()
+    defer src.Lock.Unlock()
+
+    log.Print("Deleting old tweets!")
+
     src.trie.Walk(func(word string, _count interface{}) error {
         count, ok := _count.(int)
         if !ok {
@@ -53,6 +69,9 @@ func (dst *WordDiff) Sub(src *WordDiff) {
 }
 
 func (dst *WordDiff) IncWord(word string) {
+    dst.Lock.Lock()
+    defer dst.Lock.Unlock()
+
     count, ok := dst.trie.Get(word).(int)
     if !ok {
         count = 0
