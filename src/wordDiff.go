@@ -51,8 +51,6 @@ func (dst *WordDiff) Sub(src *WordDiff) {
     defer dst.Lock.Unlock()
     defer src.Lock.Unlock()
 
-    log.Print("Deleting old tweets!")
-
     src.trie.Walk(func(word string, _count interface{}) error {
         count, ok := _count.(int)
         if !ok {
