@@ -2,7 +2,7 @@ import ReactDOM from "react-dom";
 import React, { useState, useEffect } from "react";
 import { Flipper, Flipped } from "react-flip-toolkit";
 import shuffle from "lodash.shuffle";
-import "./styles.scss";
+import "./styles.css";
 
 function compareDecimals(a, b) {
   if (a.count === b.count) return 0;
@@ -42,9 +42,6 @@ const ListShuffler = () => {
   return (
     <div id="shuffle">
       <Flipper flipKey={lst2str(data)}>
-        <button onClick={shuffleList}> shuffle</button>
-        <button onClick={sortList}> sort </button>
-        <button onClick={removeList}> remove one </button>
         <table>
           {data.map(({count, word}) => (
             <Flipped key={word} flipId={word}>

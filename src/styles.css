@@ -6,6 +6,8 @@ body {
   font-size: 2.5rem;
   font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI",
     "Roboto", "Helvetica Neue", Arial, sans-serif;
+
+  background: #BBBBBB;
 }
 
 .list {
@@ -15,4 +17,9 @@ body {
 
 .list > li {
   margin-right: 1rem;
+}
+
+.list-item {
+  display: block;
+  background: white;
 }
