@@ -3,6 +3,8 @@
 
 To Build:
 ```
+npm install
+npm run build
 docker build . -t top-tweets
 ```
 
