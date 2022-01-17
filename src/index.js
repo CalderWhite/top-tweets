@@ -36,7 +36,6 @@ const ListShuffler = () => {
   useEffect(() => {
     // TODO: Make this into a web socket
     setInterval(updateData, 1000);
-    console.log("Ran that useEffect code.")
   }, [])
 
   return (
