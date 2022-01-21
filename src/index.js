@@ -12,6 +12,7 @@ function compareDecimals(a, b) {
 
 const ListShuffler = () => {
   const [data, setData] = useState([])
+  const [totalTweets, setTweets] = useState(0);
   const sortList = () => {
     let copy = data.slice();
     copy.sort(compareDecimals);
@@ -30,7 +31,10 @@ const ListShuffler = () => {
   const updateData = () => {
     fetch('/api/words/top')
       .then(response => response.json())
-      .then(data => setData(data));
+      .then(data => {
+        setTweets(data["total"])
+        setData(data["words"])
+      });
   }
 
   useEffect(() => {
@@ -39,19 +43,22 @@ const ListShuffler = () => {
   }, [])
 
   return (
-    <div id="shuffle">
-      <Flipper flipKey={lst2str(data)}>
-        <table>
-          {data.map(({count, word}) => (
-            <Flipped key={word} flipId={word}>
-              <tr className="list-item card">
-                <td>{count}</td>
-                <td>{word}</td>
-              </tr>
-            </Flipped>
-          ))}
-        </table>
-      </Flipper>
+    <div>
+      <p>Total Tweets: {totalTweets}</p>
+      <div id="shuffle">
+        <Flipper flipKey={lst2str(data)}>
+          <table>
+            {data.map(({count, word}) => (
+              <Flipped key={word} flipId={word}>
+                <tr className="list-item card">
+                  <td>{count}</td>
+                  <td>{word}</td>
+                </tr>
+              </Flipped>
+            ))}
+          </table>
+        </Flipper>
+      </div>
     </div>
   );
 };
