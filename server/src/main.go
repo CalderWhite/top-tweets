@@ -32,7 +32,10 @@ func main() {
         for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
           words[i], words[j] = words[j], words[i]
         }
-        c.JSON(200, words)
+        c.JSON(200, gin.H{
+          "words": words,
+          "total": globalTweetCount,
+        })
     })
     r.GET("/", func(c *gin.Context) {
         c.File("build/index.html")

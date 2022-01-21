@@ -25,8 +25,16 @@ import (
  * without this method.
  */
 
+
  // the amount of tweets required to trigger a push to the wordDiffQueue
-const AGG_PERIOD int = 300
+const AGG_SIZE int = 300
+
+// the number of AGG_SIZE tweet blocks that will be considered at one time. Once exceeded, we will start deleteing blocks
+const FOCUS_PERIOD int = 300;
+
+// how many AGG_SIZE tweet blocks are required to where we feel we have an accurate reading of the language.
+// then this rolling window will be used to adjust the results in our FOCUS_PERIOD
+const LONG_PERIOD = FOCUS_PERIOD * 10;
 
 type StreamDataSchema struct {
     Data struct {
@@ -43,8 +51,12 @@ type WordPair struct {
 }
 
 var stopWords *trie.RuneTrie = NewStopWordsTrie()
-var wordDiffQueue *CircularQueue = NewCircularQueue(300)
+var wordDiffQueue *CircularQueue = NewCircularQueue(FOCUS_PERIOD)
+var longWordDiffQueue *CircularQueue = NewCircularQueue(LONG_PERIOD)
 var globalDiff *WordDiff = NewWordDiff()
+var longGlobalDiff *WordDiff = NewWordDiff()
+
+var globalTweetCount int;
 
 func streamTweets(tweets chan<- StreamDataSchema) {
     client := &http.Client{}
@@ -112,6 +124,9 @@ func processTweets(tweets <-chan StreamDataSchema) {
 
     tweetCount := 0
     for tweet := range tweets {
+        globalTweetCount++
+        tweetCount += 1
+        tweetCount %= AGG_SIZE
         // this is inefficient. If our process is slowing down, make this is a custom parser.
         sanatizedText := urlRule.ReplaceAllString(tweet.Data.Text, "")
         tokens := delimRule.Split(sanatizedText, -1)
@@ -122,9 +137,6 @@ func processTweets(tweets <-chan StreamDataSchema) {
                 diff.IncWord(word)
             }
 
-            tweetCount += 1
-            tweetCount %= AGG_PERIOD
-
             if tweetCount == 0 {
                 if (wordDiffQueue.IsFull()) {
                     oldestDiff, ok := wordDiffQueue.Dequeue().(*WordDiff)
@@ -134,8 +146,19 @@ func processTweets(tweets <-chan StreamDataSchema) {
                     globalDiff.Sub(oldestDiff)
                 }
 
+                if (longWordDiffQueue.IsFull()) {
+                    oldestDiff, ok := longWordDiffQueue.Dequeue().(*WordDiff)
+                    if !ok {
+                        log.Panic("Could not convert dequeued object to WordDiff.")
+                    }
+                    longGlobalDiff.Sub(oldestDiff)
+                }
+
                 wordDiffQueue.Enqueue(diff)
                 globalDiff.Add(diff)
+
+                longWordDiffQueue.Enqueue(diff)
+                longGlobalDiff.Add(diff)
 
                 diff = NewWordDiff()
             }
@@ -158,11 +181,26 @@ func getTop(topAmount int) []WordPair {
     top := make([]WordPair, topAmount)
     globalDiff.Lock.Lock()
     defer globalDiff.Lock.Unlock()
+    longGlobalDiff.Lock.Lock()
+    defer longGlobalDiff.Lock.Unlock()
     globalDiff.trie.Walk(func(word string, _count interface{}) error {
         count, ok := _count.(int)
         if !ok {
             return nil
         }
+
+        longCount, ok := longGlobalDiff.trie.Get(word).(int);
+        if !ok {
+          // why is this happening???
+          log.Println("Got not okay from longGlobalDiff on word in globalDiff. Word:", word)
+        }
+
+        // normalize the count. So, if the count is less than the average usage of the the word over LONG_PERIOD, then it will me negative.
+        // In theory, this method should return higher counts for words that are being used more than average.
+        // (LONG_PERIOD / FOCUS_PERIOD) = the factor FOCUS_PERIOD is multiplied by for the LONG_PERIOD
+        // then we divide the long count by that factor to make it the average usage over the past LONG_PERIOD
+        count -= longCount / (LONG_PERIOD / FOCUS_PERIOD)
+        //log.Println(longCount, longCount / (LONG_PERIOD / FOCUS_PERIOD), LONG_PERIOD / FOCUS_PERIOD)
 
         if count > top[0].Count {
             for i := 0; i < len(top); i++ {
