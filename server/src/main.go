@@ -1,8 +1,10 @@
 package main
 
 import (
+    "log"
     "strconv"
     "github.com/gin-gonic/gin"
+    "github.com/openacid/slim/trie"
 )
 
 func main() {
@@ -110,6 +112,33 @@ func main() {
                 "status": "error",
                 "code": 400,
                 "message": "Period parameter must be either 'focus' or 'long'.",
+            })
+        }
+    })
+
+    r.GET("/api/chunks/last", func (c *gin.Context) {
+        diff, ok := wordDiffQueue.Last().(*trie.SlimTrie)
+        if ok {
+            diff.ScanFrom("", true, true, func(word []byte, value []byte) bool {
+                _, count := trieCodec.Decode(value)
+                log.Println(string(word), count)
+                return true
+            })
+            bytes, err := diff.Marshal()
+            if err == nil {
+                c.Data(200, "application", bytes)
+            } else {
+                c.JSON(500, gin.H{
+                    "status": "error",
+                    "code": 500,
+                    "message": "Server ran into error marshalling data.",
+                })
+            }
+        } else {
+            c.JSON(500, gin.H {
+                "status": "error",
+                "code": 500,
+                "message": "Encountered error reading the latest chunk.",
             })
         }
     })

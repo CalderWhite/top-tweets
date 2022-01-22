@@ -60,6 +60,14 @@ func (q *CircularQueue) Dequeue() interface{} {
 	return v
 }
 
+func (q *CircularQueue) Last() interface{} {
+    if q.IsEmpty() {
+        return nil
+    }
+
+    return q.data[(q.tail - 1) % q.capacity]
+}
+
 // String prints the queue
 func (q *CircularQueue) String() string {
 	if q.IsEmpty() {

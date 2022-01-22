@@ -34,7 +34,13 @@ import (
 const AGG_SIZE int = 300
 
 // the number of AGG_SIZE tweet blocks that will be considered at one time. Once exceeded, we will start deleteing blocks
-const FOCUS_PERIOD int = 300;
+/**
+ * (100) * (100) -- last 4 minutes
+ * (300) * (100) -- last 12 minutes
+ *
+ *
+ */
+const FOCUS_PERIOD int = 100;
 
 // how many AGG_SIZE tweet blocks are required to where we feel we have an accurate reading of the language.
 // then this rolling window will be used to adjust the results in our FOCUS_PERIOD
@@ -129,7 +135,7 @@ func processTweets(tweets <-chan StreamDataSchema) {
     tweetCount := 0
     for tweet := range tweets {
         globalTweetCount++
-        tweetCount += 1
+        tweetCount++
         tweetCount %= AGG_SIZE
         // this is inefficient. If our process is slowing down, make this is a custom parser.
         sanatizedText := urlRule.ReplaceAllString(tweet.Data.Text, "")
@@ -139,37 +145,33 @@ func processTweets(tweets <-chan StreamDataSchema) {
             validWord := isValidWord(word)
             if (validWord) {
                 diff.IncWord(word)
+                globalDiff.IncWord(word)
+                longGlobalDiff.IncWord(word)
+            }
+        }
+
+        if tweetCount == 0 {
+            if (wordDiffQueue.IsFull()) {
+                oldestDiff, ok := wordDiffQueue.Dequeue().(*trie.SlimTrie)
+                if !ok {
+                    log.Panic("Could not convert dequeued object to WordDiff.")
+                }
+                globalDiff.Sub(oldestDiff)
             }
 
-            if tweetCount == 0 {
-                if (wordDiffQueue.IsFull()) {
-                    oldestDiff, ok := wordDiffQueue.Dequeue().(*trie.SlimTrie)
-                    if !ok {
-                        log.Panic("Could not convert dequeued object to WordDiff.")
-                    }
-                    globalDiff.Sub(oldestDiff)
+            if (longWordDiffQueue.IsFull()) {
+                oldestDiff, ok := longWordDiffQueue.Dequeue().(*trie.SlimTrie)
+                if !ok {
+                    log.Panic("Could not convert dequeued object to WordDiff.")
                 }
-
-                if (longWordDiffQueue.IsFull()) {
-                    oldestDiff, ok := longWordDiffQueue.Dequeue().(*trie.SlimTrie)
-                    if !ok {
-                        log.Panic("Could not convert dequeued object to WordDiff.")
-                    }
-                    longGlobalDiff.Sub(oldestDiff)
-                }
-
-                // TODO Convert mtrie to strie here.
-
-                strie := diff.GetStrie()
-
-                wordDiffQueue.Enqueue(strie)
-                globalDiff.Add(strie)
-
-                longWordDiffQueue.Enqueue(strie)
-                longGlobalDiff.Add(strie)
-
-                diff = NewWordDiff()
+                longGlobalDiff.Sub(oldestDiff)
             }
+
+            strie := diff.GetStrie()
+            wordDiffQueue.Enqueue(strie)
+            longWordDiffQueue.Enqueue(strie)
+
+            diff = NewWordDiff()
         }
     }
 }
@@ -210,7 +212,7 @@ func getTop(topAmount int) []WordPair {
         count -= longCount / (LONG_PERIOD / FOCUS_PERIOD)
         //log.Println(longCount, longCount / (LONG_PERIOD / FOCUS_PERIOD), LONG_PERIOD / FOCUS_PERIOD)
 
-        if count > top[0].Count {
+        if count > 0 && count > top[0].Count {
             for i := 0; i < len(top); i++ {
                 if count <= top[i].Count {
                     // subtract one since the previous index is the one we are greater than
