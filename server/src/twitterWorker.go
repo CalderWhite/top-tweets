@@ -10,8 +10,12 @@ import (
     "regexp"
     "strings"
     "io/ioutil"
-    trie "github.com/dghubble/trie"
+    mtrie "github.com/dghubble/trie"
+    "github.com/openacid/slim/trie"
 )
+
+// mtrie --> Mutable trie
+// strie --> Static trie
 
 /**
  * Idea: Remove words that are present in larger moving averages to see what is currently trending.
@@ -50,7 +54,7 @@ type WordPair struct {
     Count int `json:"count"`
 }
 
-var stopWords *trie.RuneTrie = NewStopWordsTrie()
+var stopWords *mtrie.RuneTrie = NewStopWordsTrie()
 var wordDiffQueue *CircularQueue = NewCircularQueue(FOCUS_PERIOD)
 var longWordDiffQueue *CircularQueue = NewCircularQueue(LONG_PERIOD)
 var globalDiff *WordDiff = NewWordDiff()
@@ -139,7 +143,7 @@ func processTweets(tweets <-chan StreamDataSchema) {
 
             if tweetCount == 0 {
                 if (wordDiffQueue.IsFull()) {
-                    oldestDiff, ok := wordDiffQueue.Dequeue().(*WordDiff)
+                    oldestDiff, ok := wordDiffQueue.Dequeue().(*trie.SlimTrie)
                     if !ok {
                         log.Panic("Could not convert dequeued object to WordDiff.")
                     }
@@ -147,18 +151,22 @@ func processTweets(tweets <-chan StreamDataSchema) {
                 }
 
                 if (longWordDiffQueue.IsFull()) {
-                    oldestDiff, ok := longWordDiffQueue.Dequeue().(*WordDiff)
+                    oldestDiff, ok := longWordDiffQueue.Dequeue().(*trie.SlimTrie)
                     if !ok {
                         log.Panic("Could not convert dequeued object to WordDiff.")
                     }
                     longGlobalDiff.Sub(oldestDiff)
                 }
 
-                wordDiffQueue.Enqueue(diff)
-                globalDiff.Add(diff)
+                // TODO Convert mtrie to strie here.
 
-                longWordDiffQueue.Enqueue(diff)
-                longGlobalDiff.Add(diff)
+                strie := diff.GetStrie()
+
+                wordDiffQueue.Enqueue(strie)
+                globalDiff.Add(strie)
+
+                longWordDiffQueue.Enqueue(strie)
+                longGlobalDiff.Add(strie)
 
                 diff = NewWordDiff()
             }
@@ -228,19 +236,3 @@ func getTop(topAmount int) []WordPair {
 
     return top
 }
-
-/*
-func main() {
-    go tweetsWorker()
-
-    for {
-        log.Println("Table:")
-        log.Println("-----------------------------")
-        topTweets := getTop(10)
-        for _, wordPair := range topTweets {
-            log.Println(wordPair)
-        }
-        time.Sleep(1 * time.Second)
-    }
-}
-*/
