@@ -10,7 +10,7 @@ import (
 )
 
 // use global codec instead of adding it to each WordDiff object
-var trieCodec encode.I32 = encode.I32{}
+var trieCodec encode.I16 = encode.I16{}
 
 // one definition file since this is used in 2 places
 type WordDiff struct {
@@ -33,7 +33,7 @@ func (dst *WordDiff) Add(src *trie.SlimTrie) {
     defer dst.Lock.Unlock()
     src.ScanFrom("", true, true, func(word []byte, value []byte) bool {
         _, count := trieCodec.Decode(value)
-        countInt := int(count.(int32))
+        countInt := int(count.(int16))
         currentCount, ok := dst.trie.Get(string(word)).(int)
         if !ok {
             currentCount = 0
@@ -52,7 +52,7 @@ func (dst *WordDiff) Sub(src *trie.SlimTrie) {
     defer dst.Lock.Unlock()
     src.ScanFrom("", true, true, func(word []byte, value []byte) bool {
         _, count := trieCodec.Decode(value)
-        countInt := int(count.(int32))
+        countInt := int(count.(int16))
         currentCount, ok := dst.trie.Get(string(word)).(int)
         if !ok {
             currentCount = 0
@@ -84,7 +84,7 @@ func (dst *WordDiff) GetStrie() *trie.SlimTrie {
         if !ok {
             return nil
         }
-        counts.Add(word, int32(count))
+        counts.Add(word, int16(count))
         return nil
     })
 

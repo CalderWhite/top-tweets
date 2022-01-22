@@ -9,6 +9,11 @@ func main() {
     r := gin.Default()
     r.Static("/static", "./build/static")
 
+    /**
+     * Gets the top [limit] words (default 100), adjusted by the longGlobalDiff.
+     * This adjustment allows top to produce emerging and interesting words, instead of 
+     * stopwords like "the" or "los" (in spanish), etc.
+     */
     r.GET("/api/words/top", func(c *gin.Context) {
         q := c.Request.URL.Query()
         limitParam, found := q["limit"]
@@ -38,6 +43,11 @@ func main() {
         })
     })
 
+    /**
+     * Returns the count for the given [:word].
+     * period = [ focus | long ]
+     * For the [long] period, we use longGlobalDiff. For [focus] we use globalDiff.
+     */
     r.GET("/api/word/:word", func(c *gin.Context) {
         q := c.Request.URL.Query()
         period, periodFound := q["period"]
@@ -60,6 +70,48 @@ func main() {
             "word": c.Param("word"),
             "count": count,
         })
+    })
+
+    /*
+     * Produces a protobuf serialized snapshot of the current globalDiff or longGlobalDiff.
+     * period = [ focus | long ]
+     * the period determines which globalDiff is being used for the snapshot.
+     * 
+     * NOTE: The returned data is binary.
+     */
+    r.GET("/api/snapshot", func (c *gin.Context) {
+        q := c.Request.URL.Query()
+        period, periodFound := q["period"]
+
+        if !periodFound || period[0] == "focus" {
+            bytes, err := globalDiff.GetStrie().Marshal()
+            if err == nil {
+                c.Data(200, "application", bytes)
+            } else {
+                c.JSON(500, gin.H{
+                    "status": "error",
+                    "code": 500,
+                    "message": "Server ran into error marshalling data.",
+                })
+            }
+        } else if period[0] == "long" {
+            bytes, err := longGlobalDiff.GetStrie().Marshal()
+            if err == nil {
+                c.Data(200, "application", bytes)
+            } else {
+                c.JSON(500, gin.H{
+                    "status": "error",
+                    "code": 500,
+                    "message": "Server ran into error marshalling data.",
+                })
+            }
+        } else {
+            c.JSON(400, gin.H{
+                "status": "error",
+                "code": 400,
+                "message": "Period parameter must be either 'focus' or 'long'.",
+            })
+        }
     })
 
     r.GET("/", func(c *gin.Context) {
