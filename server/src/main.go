@@ -37,6 +37,31 @@ func main() {
           "total": globalTweetCount,
         })
     })
+
+    r.GET("/api/word/:word", func(c *gin.Context) {
+        q := c.Request.URL.Query()
+        period, periodFound := q["period"]
+
+        var count int
+        if !periodFound || period[0] == "focus" {
+            count, _ = globalDiff.trie.Get(c.Param("word")).(int)
+        } else if period[0] == "long" {
+            count, _ = longGlobalDiff.trie.Get(c.Param("word")).(int)
+        } else {
+            c.JSON(400, gin.H{
+                "status": "error",
+                "code": 400,
+                "message": "Period parameter must be either 'focus' or 'long'.",
+            })
+            return
+        }
+
+        c.JSON(200, gin.H{
+            "word": c.Param("word"),
+            "count": count,
+        })
+    })
+
     r.GET("/", func(c *gin.Context) {
         c.File("build/index.html")
     })
