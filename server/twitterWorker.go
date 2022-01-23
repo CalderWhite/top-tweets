@@ -46,16 +46,16 @@ const FOCUS_PERIOD int = 100
 
 type StreamDataSchema struct {
 	Data struct {
-		Text      string    `json:"text"`
-		ID        string    `json:"id"`
+		Text	  string	`json:"text"`
+		ID		  string	`json:"id"`
 		CreatedAt time.Time `json:"created_at"`
-		AuthorID  string    `json:"author_id"`
+		AuthorID  string	`json:"author_id"`
 	} `json:"data"`
 }
 
 type WordPair struct {
 	Word  string `json:"word"`
-	Count int    `json:"count"`
+	Count int	 `json:"count"`
 }
 
 var stopWords *mtrie.RuneTrie = lib.NewStopWordsTrie()
@@ -125,10 +125,11 @@ func isValidWord(word string) bool {
 }
 
 func processTweets(tweets <-chan StreamDataSchema) {
-	diff := lib.NewWordDiff()
 	urlRule := regexp.MustCompile(`((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)`)
 	delimRule := regexp.MustCompile(` |"|\.|\,|\!|\?|\:|、|\n`)
 
+	diff := lib.NewWordDiff()
+	smallDiff := lib.NewWordDiff()
 	tweetCount := 0
 	for tweet := range tweets {
 		globalTweetCount++
@@ -141,10 +142,21 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			word := sanatizeWord(token)
 			validWord := isValidWord(word)
 			if validWord {
-				diff.IncWord(word)
-				globalDiff.IncWord(word)
-				longGlobalDiff.IncWord(word)
+				smallDiff.IncWord(word)
 			}
+		}
+
+		// we have to update like this. if we use globalDiff.IncWord() it causes a huge memory leak
+		// still no idea why. It happens inside the .Put() call within the .IncWord() func
+		// Perhaps a good solution would be to use a HAT-Trie. I looked at a go binding, but it didn't support int64.
+		// I could make it support int48 or something, but that would take a bunch of work.
+		if tweetCount % 10 == 0 {
+			strie := smallDiff.GetStrie()
+			globalDiff.Add(strie)
+			longGlobalDiff.Add(strie)
+			diff.Add(strie)
+
+			smallDiff = lib.NewWordDiff()
 		}
 
 		if tweetCount == 0 {
@@ -155,7 +167,6 @@ func processTweets(tweets <-chan StreamDataSchema) {
 				}
 				globalDiff.Sub(oldestDiff)
 			}
-
 			strie := diff.GetStrie()
 			wordDiffQueue.Enqueue(strie)
 
@@ -180,6 +191,7 @@ func getTop(topAmount int) []WordPair {
 	if globalTweetCount/(FOCUS_PERIOD*AGG_SIZE) == 0 {
 		return make([]WordPair, 0)
 	}
+
 
 	foundNonZero := false
 

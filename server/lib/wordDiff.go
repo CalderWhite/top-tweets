@@ -62,6 +62,8 @@ func (dst *WordDiff) Sub(src *trie.SlimTrie) {
 	})
 }
 
+// XXX: For some reason this function causes a memory leak but Add() doesn't
+// if the trie is deleted and recreated it gets rid of the memory leak though???
 func (dst *WordDiff) IncWord(word string) {
 	dst.Lock.Lock()
 	defer dst.Lock.Unlock()
@@ -71,7 +73,7 @@ func (dst *WordDiff) IncWord(word string) {
 		count = 0
 	}
 
-	dst.Trie.Put(word, count+1)
+	dst.Trie.Put(word, count + 1)
 }
 
 func (dst *WordDiff) GetStrie() *trie.SlimTrie {
