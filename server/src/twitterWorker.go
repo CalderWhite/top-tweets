@@ -141,35 +141,36 @@ func processTweets(tweets <-chan StreamDataSchema) {
                 diff.IncWord(word)
             }
 
-            if tweetCount == 0 {
-                if (wordDiffQueue.IsFull()) {
-                    oldestDiff, ok := wordDiffQueue.Dequeue().(*trie.SlimTrie)
-                    if !ok {
-                        log.Panic("Could not convert dequeued object to WordDiff.")
-                    }
-                    globalDiff.Sub(oldestDiff)
+        }
+
+        if tweetCount == 0 {
+            if (wordDiffQueue.IsFull()) {
+                oldestDiff, ok := wordDiffQueue.Dequeue().(*trie.SlimTrie)
+                if !ok {
+                    log.Panic("Could not convert dequeued object to WordDiff.")
                 }
-
-                if (longWordDiffQueue.IsFull()) {
-                    oldestDiff, ok := longWordDiffQueue.Dequeue().(*trie.SlimTrie)
-                    if !ok {
-                        log.Panic("Could not convert dequeued object to WordDiff.")
-                    }
-                    longGlobalDiff.Sub(oldestDiff)
-                }
-
-                // TODO Convert mtrie to strie here.
-
-                strie := diff.GetStrie()
-
-                wordDiffQueue.Enqueue(strie)
-                globalDiff.Add(strie)
-
-                longWordDiffQueue.Enqueue(strie)
-                longGlobalDiff.Add(strie)
-
-                diff = NewWordDiff()
+                globalDiff.Sub(oldestDiff)
             }
+
+            if (longWordDiffQueue.IsFull()) {
+                oldestDiff, ok := longWordDiffQueue.Dequeue().(*trie.SlimTrie)
+                if !ok {
+                    log.Panic("Could not convert dequeued object to WordDiff.")
+                }
+                longGlobalDiff.Sub(oldestDiff)
+            }
+
+            // TODO Convert mtrie to strie here.
+
+            strie := diff.GetStrie()
+
+            //wordDiffQueue.Enqueue(strie)
+            globalDiff.Add(strie)
+
+            //longWordDiffQueue.Enqueue(strie)
+            //longGlobalDiff.Add(strie)
+
+            diff = NewWordDiff()
         }
     }
 }
@@ -197,17 +198,17 @@ func getTop(topAmount int) []WordPair {
             return nil
         }
 
-        longCount, ok := longGlobalDiff.trie.Get(word).(int);
-        if !ok {
+        //longCount, ok := longGlobalDiff.trie.Get(word).(int);
+        //if !ok {
           // why is this happening???
-          log.Println("Got not okay from longGlobalDiff on word in globalDiff. Word:", word)
-        }
+          //log.Println("Got not okay from longGlobalDiff on word in globalDiff. Word:", word)
+        //}
 
         // normalize the count. So, if the count is less than the average usage of the the word over LONG_PERIOD, then it will me negative.
         // In theory, this method should return higher counts for words that are being used more than average.
         // (LONG_PERIOD / FOCUS_PERIOD) = the factor FOCUS_PERIOD is multiplied by for the LONG_PERIOD
         // then we divide the long count by that factor to make it the average usage over the past LONG_PERIOD
-        count -= longCount / (LONG_PERIOD / FOCUS_PERIOD)
+        //count -= longCount / (LONG_PERIOD / FOCUS_PERIOD)
         //log.Println(longCount, longCount / (LONG_PERIOD / FOCUS_PERIOD), LONG_PERIOD / FOCUS_PERIOD)
 
         if count > top[0].Count {
