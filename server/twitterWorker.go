@@ -60,8 +60,8 @@ type WordPair struct {
 
 var stopWords *mtrie.RuneTrie = lib.NewStopWordsTrie()
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
-var globalDiff *lib.WordDiff = lib.NewWordDiff()
-var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
+var globalDiff *lib.WordDiff = lib.NewWordDiff16()
+var longGlobalDiff *lib.WordDiff = lib.NewWordDiff64()
 
 var globalTweetCount int
 
@@ -128,8 +128,8 @@ func processTweets(tweets <-chan StreamDataSchema) {
 	urlRule := regexp.MustCompile(`((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)`)
 	delimRule := regexp.MustCompile(` |"|\.|\,|\!|\?|\:|、|\n`)
 
-	diff := lib.NewWordDiff()
-	smallDiff := lib.NewWordDiff()
+	diff := lib.NewWordDiff16()
+	smallDiff := lib.NewWordDiff16()
 	tweetCount := 0
 	for tweet := range tweets {
 		globalTweetCount++
@@ -152,11 +152,11 @@ func processTweets(tweets <-chan StreamDataSchema) {
 		// I could make it support int48 or something, but that would take a bunch of work.
 		if tweetCount % 10 == 0 {
 			strie := smallDiff.GetStrie()
-			globalDiff.Add(strie)
-			longGlobalDiff.Add(strie)
-			diff.Add(strie)
+			globalDiff.Add16(strie)
+			longGlobalDiff.Add16(strie)
+			diff.Add16(strie)
 
-			smallDiff = lib.NewWordDiff()
+			smallDiff = lib.NewWordDiff16()
 		}
 
 		if tweetCount == 0 {
@@ -165,12 +165,12 @@ func processTweets(tweets <-chan StreamDataSchema) {
 				if !ok {
 					log.Panic("Could not convert dequeued object to WordDiff.")
 				}
-				globalDiff.Sub(oldestDiff)
+				globalDiff.Sub16(oldestDiff)
 			}
 			strie := diff.GetStrie()
 			wordDiffQueue.Enqueue(strie)
 
-			diff = lib.NewWordDiff()
+			diff = lib.NewWordDiff16()
 		}
 	}
 }

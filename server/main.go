@@ -57,11 +57,11 @@ func main() {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 
-		var count int
+		var count interface{}
 		if !periodFound || period[0] == "focus" {
 			count, _ = globalDiff.Trie.Get(c.Param("word")).(int)
 		} else if period[0] == "long" {
-			count, _ = longGlobalDiff.Trie.Get(c.Param("word")).(int)
+			count, _ = longGlobalDiff.Trie.Get(c.Param("word")).(int64)
 		} else {
 			c.JSON(400, gin.H{
 				"status":  "error",
@@ -123,7 +123,8 @@ func main() {
 		diff, ok := wordDiffQueue.Last().(*trie.SlimTrie)
 		if ok {
 			diff.ScanFrom("", true, true, func(word []byte, value []byte) bool {
-				_, count := lib.TrieCodec.Decode(value)
+                // wordDiffQueue should be int16 WordDiffs
+				_, count := lib.Trie16Codec.Decode(value)
 				log.Println(string(word), count)
 				return true
 			})
