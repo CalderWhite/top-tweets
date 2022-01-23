@@ -3,3 +3,4 @@ pkg
 *.swp
 *.*.swp
 build
+.vscode
