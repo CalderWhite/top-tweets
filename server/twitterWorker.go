@@ -44,10 +44,6 @@ const AGG_SIZE int = 300
  */
 const FOCUS_PERIOD int = 100
 
-// how many AGG_SIZE tweet blocks are required to where we feel we have an accurate reading of the language.
-// then this rolling window will be used to adjust the results in our FOCUS_PERIOD
-const LONG_PERIOD = FOCUS_PERIOD * 10
-
 type StreamDataSchema struct {
 	Data struct {
 		Text      string    `json:"text"`
@@ -64,7 +60,6 @@ type WordPair struct {
 
 var stopWords *mtrie.RuneTrie = lib.NewStopWordsTrie()
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
-var longWordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(LONG_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff()
 var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
 
@@ -161,17 +156,8 @@ func processTweets(tweets <-chan StreamDataSchema) {
 				globalDiff.Sub(oldestDiff)
 			}
 
-			if longWordDiffQueue.IsFull() {
-				oldestDiff, ok := longWordDiffQueue.Dequeue().(*trie.SlimTrie)
-				if !ok {
-					log.Panic("Could not convert dequeued object to WordDiff.")
-				}
-				longGlobalDiff.Sub(oldestDiff)
-			}
-
 			strie := diff.GetStrie()
 			wordDiffQueue.Enqueue(strie)
-			longWordDiffQueue.Enqueue(strie)
 
 			diff = lib.NewWordDiff()
 		}
@@ -191,6 +177,12 @@ func tweetsWorker() {
 
 func getTop(topAmount int) []WordPair {
 	top := make([]WordPair, topAmount)
+	if globalTweetCount/(FOCUS_PERIOD*AGG_SIZE) == 0 {
+		return make([]WordPair, 0)
+	}
+
+	foundNonZero := false
+
 	globalDiff.Lock.Lock()
 	defer globalDiff.Lock.Unlock()
 	longGlobalDiff.Lock.Lock()
@@ -211,10 +203,10 @@ func getTop(topAmount int) []WordPair {
 		// In theory, this method should return higher counts for words that are being used more than average.
 		// (LONG_PERIOD / FOCUS_PERIOD) = the factor FOCUS_PERIOD is multiplied by for the LONG_PERIOD
 		// then we divide the long count by that factor to make it the average usage over the past LONG_PERIOD
-		count -= longCount / (LONG_PERIOD / FOCUS_PERIOD)
-		//log.Println(longCount, longCount / (LONG_PERIOD / FOCUS_PERIOD), LONG_PERIOD / FOCUS_PERIOD)
+		count -= longCount / (globalTweetCount / (FOCUS_PERIOD * AGG_SIZE))
 
 		if count > 0 && count > top[0].Count {
+			foundNonZero = true
 			for i := 0; i < len(top); i++ {
 				if count <= top[i].Count {
 					// subtract one since the previous index is the one we are greater than
@@ -238,5 +230,9 @@ func getTop(topAmount int) []WordPair {
 		return nil
 	})
 
-	return top
+	if foundNonZero {
+		return top
+	} else {
+		return make([]WordPair, 0)
+	}
 }
