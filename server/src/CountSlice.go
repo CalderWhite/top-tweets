@@ -6,7 +6,7 @@ import (
 
 type CountSlice struct {
     sort.StringSlice
-    Counts []int16
+    Counts []int64
 }
 
 func (s CountSlice) Swap(i, j int) {
@@ -18,7 +18,7 @@ func NewCountSlice() *CountSlice {
     return &CountSlice{}
 }
 
-func (s *CountSlice) Add(word string, count int16) {
+func (s *CountSlice) Add(word string, count int64) {
     s.StringSlice = append(s.StringSlice, word)
     s.Counts = append(s.Counts, count)
 }

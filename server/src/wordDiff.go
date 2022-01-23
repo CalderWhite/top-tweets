@@ -10,7 +10,7 @@ import (
 )
 
 // use global codec instead of adding it to each WordDiff object
-var trieCodec encode.I16 = encode.I16{}
+var trieCodec encode.I64 = encode.I64{}
 
 // one definition file since this is used in 2 places
 type WordDiff struct {
@@ -33,8 +33,8 @@ func (dst *WordDiff) Add(src *trie.SlimTrie) {
     defer dst.Lock.Unlock()
     src.ScanFrom("", true, true, func(word []byte, value []byte) bool {
         _, count := trieCodec.Decode(value)
-        countInt := int(count.(int16))
-        currentCount, ok := dst.trie.Get(string(word)).(int)
+        countInt, _:= count.(int64)
+        currentCount, ok := dst.trie.Get(string(word)).(int64)
         if !ok {
             currentCount = 0
         }
@@ -52,8 +52,8 @@ func (dst *WordDiff) Sub(src *trie.SlimTrie) {
     defer dst.Lock.Unlock()
     src.ScanFrom("", true, true, func(word []byte, value []byte) bool {
         _, count := trieCodec.Decode(value)
-        countInt := int(count.(int16))
-        currentCount, ok := dst.trie.Get(string(word)).(int)
+        countInt, _ := count.(int64)
+        currentCount, ok := dst.trie.Get(string(word)).(int64)
         if !ok {
             currentCount = 0
         }
@@ -67,12 +67,14 @@ func (dst *WordDiff) IncWord(word string) {
     dst.Lock.Lock()
     defer dst.Lock.Unlock()
 
-    count, ok := dst.trie.Get(word).(int)
+    count, ok := dst.trie.Get(word).(int64)
     if !ok {
         count = 0
     }
 
-    dst.trie.Put(word, count + 1)
+    count++
+
+    dst.trie.Put(word, count)
 }
 
 func (dst *WordDiff) GetStrie() *trie.SlimTrie {
@@ -80,11 +82,11 @@ func (dst *WordDiff) GetStrie() *trie.SlimTrie {
     // also don't add if count = 0
     counts := NewCountSlice()
     dst.trie.Walk(func(word string, _count interface{}) error {
-        count, ok := _count.(int)
+        count, ok := _count.(int64)
         if !ok {
             return nil
         }
-        counts.Add(word, int16(count))
+        counts.Add(word, count)
         return nil
     })
 

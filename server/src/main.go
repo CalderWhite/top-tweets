@@ -54,11 +54,11 @@ func main() {
         q := c.Request.URL.Query()
         period, periodFound := q["period"]
 
-        var count int
+        var count int64
         if !periodFound || period[0] == "focus" {
-            count, _ = globalDiff.trie.Get(c.Param("word")).(int)
+            count, _ = globalDiff.trie.Get(c.Param("word")).(int64)
         } else if period[0] == "long" {
-            count, _ = longGlobalDiff.trie.Get(c.Param("word")).(int)
+            count, _ = longGlobalDiff.trie.Get(c.Param("word")).(int64)
         } else {
             c.JSON(400, gin.H{
                 "status": "error",
