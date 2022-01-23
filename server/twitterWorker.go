@@ -46,16 +46,16 @@ const FOCUS_PERIOD int = 100
 
 type StreamDataSchema struct {
 	Data struct {
-		Text	  string	`json:"text"`
-		ID		  string	`json:"id"`
+		Text      string    `json:"text"`
+		ID        string    `json:"id"`
 		CreatedAt time.Time `json:"created_at"`
-		AuthorID  string	`json:"author_id"`
+		AuthorID  string    `json:"author_id"`
 	} `json:"data"`
 }
 
 type WordPair struct {
 	Word  string `json:"word"`
-	Count int	 `json:"count"`
+	Count int    `json:"count"`
 }
 
 var stopWords *mtrie.RuneTrie = lib.NewStopWordsTrie()
@@ -150,7 +150,7 @@ func processTweets(tweets <-chan StreamDataSchema) {
 		// still no idea why. It happens inside the .Put() call within the .IncWord() func
 		// Perhaps a good solution would be to use a HAT-Trie. I looked at a go binding, but it didn't support int64.
 		// I could make it support int48 or something, but that would take a bunch of work.
-		if tweetCount % 10 == 0 {
+		if tweetCount%10 == 0 {
 			strie := smallDiff.GetStrie()
 			globalDiff.Add16(strie)
 			longGlobalDiff.Add16(strie)
@@ -191,7 +191,6 @@ func getTop(topAmount int) []WordPair {
 	if globalTweetCount/(FOCUS_PERIOD*AGG_SIZE) == 0 {
 		return make([]WordPair, 0)
 	}
-
 
 	foundNonZero := false
 

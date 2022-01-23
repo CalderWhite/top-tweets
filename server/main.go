@@ -123,7 +123,7 @@ func main() {
 		diff, ok := wordDiffQueue.Last().(*trie.SlimTrie)
 		if ok {
 			diff.ScanFrom("", true, true, func(word []byte, value []byte) bool {
-                // wordDiffQueue should be int16 WordDiffs
+				// wordDiffQueue should be int16 WordDiffs
 				_, count := lib.Trie16Codec.Decode(value)
 				log.Println(string(word), count)
 				return true
