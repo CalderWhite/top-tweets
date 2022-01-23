@@ -16,7 +16,7 @@ import (
  * effort way to do this while also creating the smallest design impact.
  */
 
-
+// Note to self: Split this into the 16 and 64 bit. Very confusing.
 
 // use global codec instead of adding it to each WordDiff object
 var Trie16Codec encode.I16 = encode.I16{}
@@ -63,11 +63,11 @@ func (dst *WordDiff) Add16(src *trie.SlimTrie) {
 				currentCount = 0
 			}
 
-			dst.Trie.Put(string(word), currentCount+countInt)
-	   } else {
+			dst.Trie.Put(string(word), int16(currentCount+countInt))
+		} else {
 			_, count := Trie16Codec.Decode(value)
-		   countInt := int64(count.(int16))
-		   currentCount, ok := dst.Trie.Get(string(word)).(int64)
+			countInt := int64(count.(int16))
+			currentCount, ok := dst.Trie.Get(string(word)).(int64)
 			if !ok {
 				currentCount = 0
 			}
@@ -78,6 +78,7 @@ func (dst *WordDiff) Add16(src *trie.SlimTrie) {
 	})
 }
 
+// TODO: Delete if zero
 // subtracts all the counts from src to dst
 func (dst *WordDiff) Sub16(src *trie.SlimTrie) {
 	dst.Lock.Lock()
@@ -91,11 +92,11 @@ func (dst *WordDiff) Sub16(src *trie.SlimTrie) {
 				currentCount = 0
 			}
 
-			dst.Trie.Put(string(word), currentCount-countInt)
-	   } else {
+			dst.Trie.Put(string(word), int16(currentCount-countInt))
+		} else {
 			_, count := Trie16Codec.Decode(value)
-		   countInt := int64(count.(int16))
-		   currentCount, ok := dst.Trie.Get(string(word)).(int64)
+			countInt := int64(count.(int16))
+			currentCount, ok := dst.Trie.Get(string(word)).(int64)
 			if !ok {
 				currentCount = 0
 			}
@@ -118,14 +119,14 @@ func (dst *WordDiff) IncWord(word string) {
 			count = 0
 		}
 
-		dst.Trie.Put(word, count + 1)
+		dst.Trie.Put(word, count+1)
 	} else {
 		count, ok := dst.Trie.Get(word).(int64)
 		if !ok {
 			count = 0
 		}
 
-		dst.Trie.Put(word, count + 1)
+		dst.Trie.Put(word, count+1)
 	}
 }
 

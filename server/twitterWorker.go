@@ -42,7 +42,7 @@ const AGG_SIZE int = 300
  *
  *
  */
-const FOCUS_PERIOD int = 100
+const FOCUS_PERIOD int = 4
 
 type StreamDataSchema struct {
 	Data struct {
@@ -63,7 +63,7 @@ var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff16()
 var longGlobalDiff *lib.WordDiff = lib.NewWordDiff64()
 
-var globalTweetCount int
+var globalTweetCount int64
 
 func streamTweets(tweets chan<- StreamDataSchema) {
 	client := &http.Client{}
@@ -167,6 +167,8 @@ func processTweets(tweets <-chan StreamDataSchema) {
 				}
 				globalDiff.Sub16(oldestDiff)
 			}
+
+			// XXX: The data disappears here
 			strie := diff.GetStrie()
 			wordDiffQueue.Enqueue(strie)
 
@@ -188,7 +190,7 @@ func tweetsWorker() {
 
 func getTop(topAmount int) []WordPair {
 	top := make([]WordPair, topAmount)
-	if globalTweetCount/(FOCUS_PERIOD*AGG_SIZE) == 0 {
+	if globalTweetCount/int64((FOCUS_PERIOD*AGG_SIZE)) == 0 {
 		return make([]WordPair, 0)
 	}
 
@@ -204,7 +206,7 @@ func getTop(topAmount int) []WordPair {
 			return nil
 		}
 
-		longCount, ok := longGlobalDiff.Trie.Get(word).(int)
+		longCount, ok := longGlobalDiff.Trie.Get(word).(int64)
 		if !ok {
 			// why is this happening???
 			log.Println("Got not okay from longGlobalDiff on word in globalDiff. Word:", word)
@@ -214,7 +216,7 @@ func getTop(topAmount int) []WordPair {
 		// In theory, this method should return higher counts for words that are being used more than average.
 		// (LONG_PERIOD / FOCUS_PERIOD) = the factor FOCUS_PERIOD is multiplied by for the LONG_PERIOD
 		// then we divide the long count by that factor to make it the average usage over the past LONG_PERIOD
-		count -= longCount / (globalTweetCount / (FOCUS_PERIOD * AGG_SIZE))
+		count -= int(longCount / (globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)))
 
 		if count > 0 && count > top[0].Count {
 			foundNonZero = true

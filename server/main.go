@@ -59,7 +59,7 @@ func main() {
 
 		var count interface{}
 		if !periodFound || period[0] == "focus" {
-			count, _ = globalDiff.Trie.Get(c.Param("word")).(int)
+			count, _ = globalDiff.Trie.Get(c.Param("word")).(int16)
 		} else if period[0] == "long" {
 			count, _ = longGlobalDiff.Trie.Get(c.Param("word")).(int64)
 		} else {
