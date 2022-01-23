@@ -1,4 +1,4 @@
-module main.go
+module github.com/CalderWhite/top-tweets/server
 
 go 1.17
 

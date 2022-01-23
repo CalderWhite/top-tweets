@@ -1,4 +1,4 @@
-package main
+package lib
 
 import "fmt"
 
@@ -61,11 +61,11 @@ func (q *CircularQueue) Dequeue() interface{} {
 }
 
 func (q *CircularQueue) Last() interface{} {
-    if q.IsEmpty() {
-        return nil
-    }
+	if q.IsEmpty() {
+		return nil
+	}
 
-    return q.data[(q.tail - 1) % q.capacity]
+	return q.data[(q.tail-1)%q.capacity]
 }
 
 // String prints the queue
