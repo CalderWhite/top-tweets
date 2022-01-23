@@ -13,7 +13,6 @@ import (
 
 	"github.com/CalderWhite/top-tweets/server/lib"
 
-	mtrie "github.com/dghubble/trie"
 	"github.com/openacid/slim/trie"
 )
 
@@ -58,7 +57,6 @@ type WordPair struct {
 	Count int    `json:"count"`
 }
 
-var stopWords *mtrie.RuneTrie = lib.NewStopWordsTrie()
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff16()
 var longGlobalDiff *lib.WordDiff = lib.NewWordDiff64()
@@ -110,11 +108,6 @@ func sanatizeWord(word string) string {
 }
 
 func isValidWord(word string) bool {
-	stopWord := stopWords.Get(word)
-	if stopWord != nil {
-		return false
-	}
-
 	// primitive filter to get rid of uninteresting words.
 	// more sophisticated algorithm idea at the top.
 	if len(word) < 3 {
