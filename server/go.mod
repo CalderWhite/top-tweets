@@ -3,7 +3,6 @@ module github.com/CalderWhite/top-tweets/server
 go 1.17
 
 require (
-	github.com/dghubble/trie v0.0.0-20211002190126-ca25329b35c6
 	github.com/gin-gonic/gin v1.7.7
 	github.com/openacid/slim v0.5.11
 )

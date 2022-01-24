@@ -100,7 +100,7 @@ func main() {
 				})
 			}
 		} else if period[0] == "long" {
-			bytes, err := longGlobalDiff.GetSlimTrie16().Marshal()
+			bytes, err := longGlobalDiff.GetSlimTrie64().Marshal()
 			if err == nil {
 				c.Data(200, "application", bytes)
 			} else {
