@@ -18,7 +18,6 @@ import (
 
 type WordDiff64 struct {
 	words map[string]int64
-	Trie  *trie.SlimTrie
 	// Maps do not allow concurrent reads and writes in Go, so we must use a mutex
 	mutex sync.Mutex
 }
@@ -26,14 +25,6 @@ type WordDiff64 struct {
 func NewWordDiff64() *WordDiff64 {
 	w := &WordDiff64{}
 	w.words = make(map[string]int64)
-	var err error
-	w.Trie, err = trie.NewSlimTrie(TrieCodec64, []string{}, []int16{}, trie.Opt{
-		Complete: trie.Bool(true),
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	return w
 }
 
@@ -62,12 +53,8 @@ func (w *WordDiff64) GetUnlocked(word string) int64 {
 	if !ok {
 		count = 0
 	}
-	trieCount, ok2 := w.Trie.GetI64(word)
-	if !ok2 {
-		trieCount = 0
-	}
 
-	return count + trieCount
+	return count
 }
 
 func (w *WordDiff64) Get(word string) int64 {
@@ -176,14 +163,6 @@ func (w *WordDiff64) WalkUnlocked(walkFunc func(string, int64)) {
 	for word := range w.words {
 		walkFunc(word, w.GetUnlocked(word))
 	}
-
-	w.Trie.ScanFrom("", true, true, func(word []byte, value []byte) bool {
-		_, ok := w.words[string(word)]
-		if !ok {
-			walkFunc(string(word), w.GetUnlocked(string(word)))
-		}
-		return true
-	})
 }
 
 func (w *WordDiff64) Walk(walkFunc func(string, int64)) {
@@ -220,7 +199,5 @@ func (w *WordDiff64) GetSlimTrie64() *trie.SlimTrie {
 func (w *WordDiff64) Compress() {
 	w.Lock()
 	defer w.Unlock()
-	sTrie := w.GetSlimTrie64Unlocked()
-	w.Trie = sTrie
 	w.words = make(map[string]int64)
 }
