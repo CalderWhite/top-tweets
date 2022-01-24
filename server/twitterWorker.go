@@ -31,6 +31,8 @@ import (
  * without this method.
  */
 
+// TODO: Routinely compress WordDiffs to SlimTries and work with a hybrid. This could probably save a lot of memory
+
 // the amount of tweets required to trigger a push to the wordDiffQueue
 const AGG_SIZE int = 300
 
