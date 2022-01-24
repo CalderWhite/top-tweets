@@ -1,10 +1,7 @@
 package main
 
 import (
-	"log"
 	"strconv"
-
-	"github.com/CalderWhite/top-tweets/server/lib"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openacid/slim/trie"
@@ -122,12 +119,6 @@ func main() {
 	r.GET("/api/chunks/last", func(c *gin.Context) {
 		diff, ok := wordDiffQueue.Last().(*trie.SlimTrie)
 		if ok {
-			diff.ScanFrom("", true, true, func(word []byte, value []byte) bool {
-				// wordDiffQueue should be int16 WordDiffs
-				_, count := lib.TrieCodec16.Decode(value)
-				log.Println(string(word), count)
-				return true
-			})
 			bytes, err := diff.Marshal()
 			if err == nil {
 				c.Data(200, "application", bytes)
