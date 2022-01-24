@@ -44,7 +44,7 @@ const AGG_SIZE int = 300
 const FOCUS_PERIOD int = 4
 
 // the number of tweets between WordDiff.Compress() calls
-const COMPRESS_PERIOD int = 1000
+const COMPRESS_PERIOD int = 5000
 
 type StreamDataSchema struct {
 	Data struct {
@@ -143,8 +143,8 @@ func processTweets(tweets <-chan StreamDataSchema) {
 		}
 
 		if globalTweetCount%int64(COMPRESS_PERIOD) == 0 {
-			//globalDiff.Compress()
-			//longGlobalDiff.Compress()
+			globalDiff.Compress()
+			longGlobalDiff.Compress()
 		}
 
 		if tweetCount == 0 {

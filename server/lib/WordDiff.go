@@ -203,9 +203,9 @@ func (w *WordDiff) Walk(walkFunc func(string, int)) {
 
 func (w *WordDiff) GetSlimTrie16Unlocked() *trie.SlimTrie {
 	counts := NewCountSlice16()
-	for word := range w.words {
-		counts.Add(word, int16(w.GetUnlocked(word)))
-	}
+	w.WalkUnlocked(func(word string, count int) {
+		counts.Add(word, int16(count))
+	})
 
 	sort.Sort(counts)
 

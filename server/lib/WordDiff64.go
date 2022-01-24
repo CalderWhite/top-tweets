@@ -199,9 +199,9 @@ func (w *WordDiff64) Walk(walkFunc func(string, int64)) {
 
 func (w *WordDiff64) GetSlimTrie64Unlocked() *trie.SlimTrie {
 	counts := NewCountSlice64()
-	for word := range w.words {
-		counts.Add(word, w.GetUnlocked(word))
-	}
+	w.WalkUnlocked(func(word string, count int64) {
+		counts.Add(word, count)
+	})
 
 	sort.Sort(counts)
 
