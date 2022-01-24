@@ -21,23 +21,28 @@ import (
 //      ==> If they are really supposed to turn up often, if we do this only once every day
 //          or so it should prevent from long term memory growth. (Since eventually we will still run out of memory)
 
-// NOTE: ONLY ACCESS USING .Get() and .GetUnlocked()
-//       .Get() handles the merge between the SlimTrie and the map.
-
 var TrieCodec16 encode.I16 = encode.I16{}
 var TrieCodec64 encode.I64 = encode.I64{}
 
 type WordDiff struct {
-	Words map[string]int
+	words map[string]int
 	Trie  *trie.SlimTrie
 	// Maps do not allow concurrent reads and writes in Go, so we must use a mutex
 	mutex sync.Mutex
 }
 
 func NewWordDiff() *WordDiff {
-	return &WordDiff{
-		Words: make(map[string]int),
+	w := &WordDiff{}
+	w.words = make(map[string]int)
+	var err error
+	w.Trie, err = trie.NewSlimTrie(TrieCodec16, []string{}, []int16{}, trie.Opt{
+		Complete: trie.Bool(true),
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	return w
 }
 
 func (w *WordDiff) Lock() {
@@ -52,25 +57,25 @@ func (w *WordDiff) IncWord(word string) {
 	w.Lock()
 	defer w.Unlock()
 
-	count, ok := w.Words[word]
+	count, ok := w.words[word]
 	if !ok {
-		w.Words[word] = 1
+		w.words[word] = 1
 	} else {
-		w.Words[word] = count + 1
+		w.words[word] = count + 1
 	}
 }
 
 func (w *WordDiff) GetUnlocked(word string) int {
-	count, ok := w.Words[word]
+	count, ok := w.words[word]
+	if !ok {
+		count = 0
+	}
 	trieCount, ok2 := w.Trie.GetI16(word)
 	if !ok2 {
 		trieCount = 0
 	}
-	if !ok {
-		return int(trieCount)
-	} else {
-		return count + int(trieCount)
-	}
+
+	return count + int(trieCount)
 }
 
 func (w *WordDiff) Get(word string) int {
@@ -86,12 +91,12 @@ func (w *WordDiff) Add(diff *WordDiff) {
 	defer diff.Unlock()
 	defer w.Unlock()
 
-	for word, count := range diff.Words {
-		currentCount, ok := w.Words[word]
+	for word, count := range diff.words {
+		currentCount, ok := w.words[word]
 		if !ok {
 			currentCount = 0
 		}
-		w.Words[word] = currentCount + count
+		w.words[word] = currentCount + count
 	}
 }
 
@@ -101,12 +106,12 @@ func (w *WordDiff) AddTrie16(t *trie.SlimTrie) {
 
 	t.ScanFrom("", true, true, func(word []byte, value []byte) bool {
 		_, count := TrieCodec16.Decode(value)
-		currentCount, ok := w.Words[string(word)]
+		currentCount, ok := w.words[string(word)]
 		if !ok {
 			currentCount = 0
 		}
 
-		w.Words[string(word)] = currentCount + int(count.(int16))
+		w.words[string(word)] = currentCount + int(count.(int16))
 		return true
 	})
 }
@@ -117,12 +122,12 @@ func (w *WordDiff) AddTrie64(t *trie.SlimTrie) {
 
 	t.ScanFrom("", true, true, func(word []byte, value []byte) bool {
 		_, count := TrieCodec64.Decode(value)
-		currentCount, ok := w.Words[string(word)]
+		currentCount, ok := w.words[string(word)]
 		if !ok {
 			currentCount = 0
 		}
 
-		w.Words[string(word)] = currentCount + int(count.(int64))
+		w.words[string(word)] = currentCount + int(count.(int64))
 		return true
 	})
 }
@@ -133,13 +138,13 @@ func (w *WordDiff) Sub(diff *WordDiff) {
 	defer diff.Unlock()
 	defer w.Unlock()
 
-	for word, count := range diff.Words {
-		currentCount, ok := w.Words[word]
+	for word, count := range diff.words {
+		currentCount, ok := w.words[word]
 		if !ok {
 			currentCount = 0
 		}
 
-		w.Words[word] = currentCount - count
+		w.words[word] = currentCount - count
 	}
 }
 
@@ -149,12 +154,12 @@ func (w *WordDiff) SubTrie16(t *trie.SlimTrie) {
 
 	t.ScanFrom("", true, true, func(word []byte, value []byte) bool {
 		_, count := TrieCodec16.Decode(value)
-		currentCount, ok := w.Words[string(word)]
+		currentCount, ok := w.words[string(word)]
 		if !ok {
 			currentCount = 0
 		}
 
-		w.Words[string(word)] = currentCount - int(count.(int16))
+		w.words[string(word)] = currentCount - int(count.(int16))
 		return true
 	})
 }
@@ -165,20 +170,41 @@ func (w *WordDiff) SubTrie64(t *trie.SlimTrie) {
 
 	t.ScanFrom("", true, true, func(word []byte, value []byte) bool {
 		_, count := TrieCodec64.Decode(value)
-		currentCount, ok := w.Words[string(word)]
+		currentCount, ok := w.words[string(word)]
 		if !ok {
 			currentCount = 0
 		}
 
-		w.Words[string(word)] = currentCount - int(count.(int64))
+		w.words[string(word)] = currentCount - int(count.(int64))
 		return true
 	})
 }
 
-func (w *WordDiff) GetSlimTrie16() *trie.SlimTrie {
+func (w *WordDiff) WalkUnlocked(walkFunc func(string, int)) {
+	for word := range w.words {
+		walkFunc(word, w.GetUnlocked(word))
+	}
+
+	w.Trie.ScanFrom("", true, true, func(word []byte, value []byte) bool {
+		_, ok := w.words[string(word)]
+		if !ok {
+			walkFunc(string(word), w.GetUnlocked(string(word)))
+		}
+		return true
+	})
+}
+
+func (w *WordDiff) Walk(walkFunc func(string, int)) {
+	w.Lock()
+	defer w.Unlock()
+
+	w.WalkUnlocked(walkFunc)
+}
+
+func (w *WordDiff) GetSlimTrie16Unlocked() *trie.SlimTrie {
 	counts := NewCountSlice16()
-	for word, _ := range w.Words {
-		counts.Add(word, int16(w.Get(word)))
+	for word := range w.words {
+		counts.Add(word, int16(w.GetUnlocked(word)))
 	}
 
 	sort.Sort(counts)
@@ -192,10 +218,17 @@ func (w *WordDiff) GetSlimTrie16() *trie.SlimTrie {
 	return out
 }
 
+func (w *WordDiff) GetSlimTrie16() *trie.SlimTrie {
+	w.Lock()
+	defer w.Unlock()
+
+	return w.GetSlimTrie16Unlocked()
+}
+
 func (w *WordDiff) Compress() {
 	w.Lock()
 	defer w.Unlock()
-	sTrie := w.GetSlimTrie16()
+	sTrie := w.GetSlimTrie16Unlocked()
 	w.Trie = sTrie
-	w.Words = make(map[string]int)
+	w.words = make(map[string]int)
 }

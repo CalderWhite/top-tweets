@@ -43,6 +43,9 @@ const AGG_SIZE int = 300
  */
 const FOCUS_PERIOD int = 4
 
+// the number of tweets between WordDiff.Compress() calls
+const COMPRESS_PERIOD int = 1000
+
 type StreamDataSchema struct {
 	Data struct {
 		Text      string    `json:"text"`
@@ -139,6 +142,11 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			}
 		}
 
+		if globalTweetCount%int64(COMPRESS_PERIOD) == 0 {
+			//globalDiff.Compress()
+			//longGlobalDiff.Compress()
+		}
+
 		if tweetCount == 0 {
 			if wordDiffQueue.IsFull() {
 				oldestDiff, ok := wordDiffQueue.Dequeue().(*trie.SlimTrie)
@@ -180,11 +188,10 @@ func getTop(topAmount int) []WordPair {
 	longGlobalDiff.Lock()
 	defer globalDiff.Unlock()
 	defer longGlobalDiff.Unlock()
-	for word, _ := range globalDiff.Words {
-		count := globalDiff.GetUnlocked(word)
+	globalDiff.WalkUnlocked(func(word string, count int) {
 		longCount := longGlobalDiff.GetUnlocked(word)
 		if longCount == 0 {
-			continue
+			return
 		}
 
 		// normalize the count. So, if the count is less than the average usage of the the word over LONG_PERIOD, then it will me negative.
@@ -214,9 +221,16 @@ func getTop(topAmount int) []WordPair {
 				}
 			}
 		}
-	}
+	})
 
 	if foundNonZero {
+		// this usually doesn't happen because there are so many words with 1, but in the odd event that there isn't
+		// we don't want to return zeros because they mess up the UI. Lol.
+		for i, v := range top {
+			if v.Count == 0 {
+				return top[i+1:]
+			}
+		}
 		return top
 	} else {
 		return make([]WordPair, 0)
