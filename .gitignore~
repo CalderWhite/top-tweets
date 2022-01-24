@@ -1,6 +1,0 @@
-node_modules
-pkg
-*.swp
-*.*.swp
-build
-.vscode
