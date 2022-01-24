@@ -1,5 +1,6 @@
 # top-tweets
 
+Shows words that are in high use right now, while filtering out words that are at an "average" usage.
 
 ## Some cool things I did for this
 
@@ -7,6 +8,8 @@
 - Compressed the maps after a fixed period using a [SlimTrie](https://github.com/openacid/slim) data structure (similar to [HAT-Trie](https://tessil.github.io/2017/06/22/hat-trie.html))
 - Used some ideas from signal theory to deterministically extract "interesting" words (words of emerging popularity) among hundreds of thousands of words
 
+
+## Building + Running
 To Build:
 ```
 npm install
