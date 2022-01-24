@@ -148,8 +148,8 @@ func processTweets(tweets <-chan StreamDataSchema) {
 		}
 
 		if globalTweetCount%int64(COMPRESS_PERIOD) == 0 {
-			globalDiff.Compress()
-			longGlobalDiff.Compress()
+			//globalDiff.Compress()
+			//longGlobalDiff.Compress()
 		}
 
 		if tweetCount == 0 {
