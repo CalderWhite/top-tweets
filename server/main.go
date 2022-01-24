@@ -59,9 +59,9 @@ func main() {
 
 		var count interface{}
 		if !periodFound || period[0] == "focus" {
-			count, _ = globalDiff.Trie.Get(c.Param("word")).(int16)
+			count = globalDiff.Get(c.Param("word"))
 		} else if period[0] == "long" {
-			count, _ = longGlobalDiff.Trie.Get(c.Param("word")).(int64)
+			count = longGlobalDiff.Get(c.Param("word"))
 		} else {
 			c.JSON(400, gin.H{
 				"status":  "error",
@@ -89,7 +89,7 @@ func main() {
 		period, periodFound := q["period"]
 
 		if !periodFound || period[0] == "focus" {
-			bytes, err := globalDiff.GetStrie().Marshal()
+			bytes, err := globalDiff.GetSlimTrie16().Marshal()
 			if err == nil {
 				c.Data(200, "application", bytes)
 			} else {
@@ -100,7 +100,7 @@ func main() {
 				})
 			}
 		} else if period[0] == "long" {
-			bytes, err := longGlobalDiff.GetStrie().Marshal()
+			bytes, err := longGlobalDiff.GetSlimTrie16().Marshal()
 			if err == nil {
 				c.Data(200, "application", bytes)
 			} else {
@@ -124,7 +124,7 @@ func main() {
 		if ok {
 			diff.ScanFrom("", true, true, func(word []byte, value []byte) bool {
 				// wordDiffQueue should be int16 WordDiffs
-				_, count := lib.Trie16Codec.Decode(value)
+				_, count := lib.TrieCodec16.Decode(value)
 				log.Println(string(word), count)
 				return true
 			})

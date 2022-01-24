@@ -1,0 +1,3 @@
+import os
+
+os.system("cd server && go build . && cd .. && ./server/server.exe")

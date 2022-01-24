@@ -58,9 +58,8 @@ type WordPair struct {
 }
 
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
-var globalDiff *lib.WordDiff = lib.NewWordDiff16()
-var longGlobalDiff *lib.WordDiff = lib.NewWordDiff64()
-
+var globalDiff *lib.WordDiff = lib.NewWordDiff()
+var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
 var globalTweetCount int64
 
 func streamTweets(tweets chan<- StreamDataSchema) {
@@ -121,8 +120,7 @@ func processTweets(tweets <-chan StreamDataSchema) {
 	urlRule := regexp.MustCompile(`((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)`)
 	delimRule := regexp.MustCompile(` |"|\.|\,|\!|\?|\:|、|\n`)
 
-	diff := lib.NewWordDiff16()
-	smallDiff := lib.NewWordDiff16()
+	diff := lib.NewWordDiff()
 	tweetCount := 0
 	for tweet := range tweets {
 		globalTweetCount++
@@ -135,21 +133,10 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			word := sanatizeWord(token)
 			validWord := isValidWord(word)
 			if validWord {
-				smallDiff.IncWord(word)
+				globalDiff.IncWord(word)
+				longGlobalDiff.IncWord(word)
+				diff.IncWord(word)
 			}
-		}
-
-		// we have to update like this. if we use globalDiff.IncWord() it causes a huge memory leak
-		// still no idea why. It happens inside the .Put() call within the .IncWord() func
-		// Perhaps a good solution would be to use a HAT-Trie. I looked at a go binding, but it didn't support int64.
-		// I could make it support int48 or something, but that would take a bunch of work.
-		if tweetCount%10 == 0 {
-			strie := smallDiff.GetStrie()
-			globalDiff.Add16(strie)
-			longGlobalDiff.Add16(strie)
-			diff.Add16(strie)
-
-			smallDiff = lib.NewWordDiff16()
 		}
 
 		if tweetCount == 0 {
@@ -158,14 +145,14 @@ func processTweets(tweets <-chan StreamDataSchema) {
 				if !ok {
 					log.Panic("Could not convert dequeued object to WordDiff.")
 				}
-				globalDiff.Sub16(oldestDiff)
+				globalDiff.SubTrie16(oldestDiff)
 			}
 
 			// XXX: The data disappears here
-			strie := diff.GetStrie()
-			wordDiffQueue.Enqueue(strie)
+			sTrie := diff.GetSlimTrie16()
+			wordDiffQueue.Enqueue(sTrie)
 
-			diff = lib.NewWordDiff16()
+			diff = lib.NewWordDiff()
 		}
 	}
 }
@@ -189,27 +176,21 @@ func getTop(topAmount int) []WordPair {
 
 	foundNonZero := false
 
-	globalDiff.Lock.Lock()
-	defer globalDiff.Lock.Unlock()
-	longGlobalDiff.Lock.Lock()
-	defer longGlobalDiff.Lock.Unlock()
-	globalDiff.Trie.Walk(func(word string, _count interface{}) error {
-		count, ok := _count.(int)
+	globalDiff.Lock()
+	longGlobalDiff.Lock()
+	defer globalDiff.Unlock()
+	defer longGlobalDiff.Unlock()
+	for word, count := range globalDiff.Words {
+		longCount, ok := longGlobalDiff.Words[word]
 		if !ok {
-			return nil
-		}
-
-		longCount, ok := longGlobalDiff.Trie.Get(word).(int64)
-		if !ok {
-			// why is this happening???
-			log.Println("Got not okay from longGlobalDiff on word in globalDiff. Word:", word)
+			continue
 		}
 
 		// normalize the count. So, if the count is less than the average usage of the the word over LONG_PERIOD, then it will me negative.
 		// In theory, this method should return higher counts for words that are being used more than average.
 		// (LONG_PERIOD / FOCUS_PERIOD) = the factor FOCUS_PERIOD is multiplied by for the LONG_PERIOD
 		// then we divide the long count by that factor to make it the average usage over the past LONG_PERIOD
-		count -= int(longCount / (globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)))
+		count -= int(int64(longCount) / (globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)))
 
 		if count > 0 && count > top[0].Count {
 			foundNonZero = true
@@ -222,19 +203,17 @@ func getTop(topAmount int) []WordPair {
 					copy(top[:i], top[1:i+1])
 					// overwrite the current element
 					top[i] = WordPair{Word: word, Count: count}
-					return nil
+					break
 				} else if i == len(top)-1 {
 					// shift all those less than <count> back 1
 					copy(top[:i], top[1:i+1])
 					// overwrite the current element
 					top[i] = WordPair{Word: word, Count: count}
-					return nil
+					break
 				}
 			}
 		}
-
-		return nil
-	})
+	}
 
 	if foundNonZero {
 		return top
