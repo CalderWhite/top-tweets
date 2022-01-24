@@ -187,3 +187,11 @@ func (w *WordDiff64) GetSlimTrie64() *trie.SlimTrie {
 	}
 	return out
 }
+
+func (w *WordDiff64) Compress() {
+	w.Lock()
+	defer w.Unlock()
+	sTrie := w.GetSlimTrie64()
+	w.Trie = sTrie
+	w.Words = make(map[string]int64)
+}
