@@ -7,6 +7,10 @@ import (
 	"github.com/openacid/slim/trie"
 )
 
+/**
+ * NOTE: Caching should be considered for all endpoints, since they all run their respective queries fully.
+ */
+
 func main() {
 	r := gin.Default()
 	r.Static("/static", "./build/static")
@@ -42,6 +46,64 @@ func main() {
 		c.JSON(200, gin.H{
 			"words": words,
 			"total": globalTweetCount,
+		})
+	})
+
+	r.GET("/api/words/unique_count", func(c *gin.Context) {
+		q := c.Request.URL.Query()
+		period, periodFound := q["period"]
+		targetCountStr, targetCountFound := q["count"]
+
+		var targetCount int64
+		if targetCountFound {
+			var err error
+			targetCount, err = strconv.ParseInt(targetCountStr[0], 10, 64)
+			if err != nil {
+				c.JSON(400, gin.H{
+					"status":  "error",
+					"code":    400,
+					"message": "targetCount must be an int.",
+				})
+				return
+			}
+		}
+
+		var total int64 = 0
+		if !periodFound || period[0] == "focus" {
+			if targetCountFound {
+				globalDiff.Walk(func(word string, count int) {
+					if count == int(targetCount) {
+						total++
+					}
+				})
+			} else {
+				globalDiff.Walk(func(word string, count int) {
+					total++
+				})
+			}
+		} else if period[0] == "long" {
+			if targetCountFound {
+				longGlobalDiff.Walk(func(word string, count int64) {
+					if count == targetCount {
+						total++
+					}
+				})
+			} else {
+				longGlobalDiff.Walk(func(word string, count int64) {
+					total++
+				})
+			}
+		} else {
+			c.JSON(400, gin.H{
+				"status":  "error",
+				"code":    400,
+				"message": "Period parameter must be either 'focus' or 'long'.",
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"count": total,
 		})
 	})
 
