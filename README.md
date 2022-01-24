@@ -1,6 +1,12 @@
 # top-tweets
 
 
+## Some cool things I did for this
+
+- Used a map for hot data since it had lower overhead than tries
+- Compressed the maps after a fixed period using a [SlimTrie](https://github.com/openacid/slim) data structure (similar to [HAT-Trie](https://tessil.github.io/2017/06/22/hat-trie.html))
+- Used some ideas from signal theory to deterministically extract "interesting" words (words of emerging popularity) among hundreds of thousands of words
+
 To Build:
 ```
 npm install
