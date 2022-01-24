@@ -25,6 +25,7 @@ import (
 
 type WordDiff64 struct {
 	Words map[string]int64
+	Trie  *trie.SlimTrie
 	// Maps do not allow concurrent reads and writes in Go, so we must use a mutex
 	mutex sync.Mutex
 }
@@ -57,10 +58,14 @@ func (w *WordDiff64) IncWord(word string) {
 
 func (w *WordDiff64) GetUnlocked(word string) int64 {
 	count, ok := w.Words[word]
+	trieCount, ok2 := w.Trie.GetI64(word)
+	if !ok2 {
+		trieCount = 0
+	}
 	if !ok {
-		return 0
+		return trieCount
 	} else {
-		return count
+		return count + trieCount
 	}
 }
 
@@ -130,14 +135,7 @@ func (w *WordDiff64) Sub(diff *WordDiff64) {
 			currentCount = 0
 		}
 
-		// to prevent the map from getting huge, remove 0 and negative values.
-		if currentCount < count {
-			if ok {
-				delete(w.Words, word)
-			}
-		} else {
-			w.Words[word] = currentCount - count
-		}
+		w.Words[word] = currentCount - count
 	}
 }
 
@@ -152,11 +150,7 @@ func (w *WordDiff64) SubTrie16(t *trie.SlimTrie) {
 			currentCount = 0
 		}
 
-		if currentCount < int64(count.(int16)) {
-			delete(w.Words, string(word))
-		} else {
-			w.Words[string(word)] = currentCount - int64(count.(int16))
-		}
+		w.Words[string(word)] = currentCount - int64(count.(int16))
 		return true
 	})
 }
@@ -172,19 +166,15 @@ func (w *WordDiff64) SubTrie64(t *trie.SlimTrie) {
 			currentCount = 0
 		}
 
-		if currentCount < count.(int64) {
-			delete(w.Words, string(word))
-		} else {
-			w.Words[string(word)] = currentCount - count.(int64)
-		}
+		w.Words[string(word)] = currentCount - count.(int64)
 		return true
 	})
 }
 
 func (w *WordDiff64) GetSlimTrie64() *trie.SlimTrie {
 	counts := NewCountSlice64()
-	for word, count := range w.Words {
-		counts.Add(word, int64(count))
+	for word, _ := range w.Words {
+		counts.Add(word, w.Get(word))
 	}
 
 	sort.Sort(counts)

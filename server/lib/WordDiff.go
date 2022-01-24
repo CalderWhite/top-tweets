@@ -29,6 +29,7 @@ var TrieCodec64 encode.I64 = encode.I64{}
 
 type WordDiff struct {
 	Words map[string]int
+	Trie  *trie.SlimTrie
 	// Maps do not allow concurrent reads and writes in Go, so we must use a mutex
 	mutex sync.Mutex
 }
@@ -61,10 +62,14 @@ func (w *WordDiff) IncWord(word string) {
 
 func (w *WordDiff) GetUnlocked(word string) int {
 	count, ok := w.Words[word]
+	trieCount, ok2 := w.Trie.GetI16(word)
+	if !ok2 {
+		trieCount = 0
+	}
 	if !ok {
-		return 0
+		return int(trieCount)
 	} else {
-		return count
+		return count + int(trieCount)
 	}
 }
 
@@ -134,14 +139,7 @@ func (w *WordDiff) Sub(diff *WordDiff) {
 			currentCount = 0
 		}
 
-		// to prevent the map from getting huge, remove 0 and negative values.
-		if currentCount < count {
-			if ok {
-				delete(w.Words, word)
-			}
-		} else {
-			w.Words[word] = currentCount - count
-		}
+		w.Words[word] = currentCount - count
 	}
 }
 
@@ -156,11 +154,7 @@ func (w *WordDiff) SubTrie16(t *trie.SlimTrie) {
 			currentCount = 0
 		}
 
-		if currentCount < int(count.(int16)) {
-			delete(w.Words, string(word))
-		} else {
-			w.Words[string(word)] = currentCount - int(count.(int16))
-		}
+		w.Words[string(word)] = currentCount - int(count.(int16))
 		return true
 	})
 }
@@ -176,19 +170,15 @@ func (w *WordDiff) SubTrie64(t *trie.SlimTrie) {
 			currentCount = 0
 		}
 
-		if currentCount < int(count.(int64)) {
-			delete(w.Words, string(word))
-		} else {
-			w.Words[string(word)] = currentCount - int(count.(int64))
-		}
+		w.Words[string(word)] = currentCount - int(count.(int64))
 		return true
 	})
 }
 
 func (w *WordDiff) GetSlimTrie16() *trie.SlimTrie {
 	counts := NewCountSlice16()
-	for word, count := range w.Words {
-		counts.Add(word, int16(count))
+	for word, _ := range w.Words {
+		counts.Add(word, int16(w.Get(word)))
 	}
 
 	sort.Sort(counts)
@@ -200,4 +190,12 @@ func (w *WordDiff) GetSlimTrie16() *trie.SlimTrie {
 		log.Fatal("Failed to create SlimTrie", err)
 	}
 	return out
+}
+
+func (w *WordDiff) Compress() {
+	w.Lock()
+	defer w.Unlock()
+	sTrie := w.GetSlimTrie16()
+	w.Trie = sTrie
+	w.Words = make(map[string]int)
 }
