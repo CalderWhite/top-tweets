@@ -61,7 +61,7 @@ type WordPair struct {
 
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff()
-var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
+var longGlobalDiff *lib.WordDiff64 = lib.NewWordDiff64()
 var globalTweetCount int64
 
 func streamTweets(tweets chan<- StreamDataSchema) {
@@ -192,7 +192,7 @@ func getTop(topAmount int) []WordPair {
 		// In theory, this method should return higher counts for words that are being used more than average.
 		// (LONG_PERIOD / FOCUS_PERIOD) = the factor FOCUS_PERIOD is multiplied by for the LONG_PERIOD
 		// then we divide the long count by that factor to make it the average usage over the past LONG_PERIOD
-		count -= int(int64(longCount) / (globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)))
+		count -= int(longCount / (globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)))
 
 		if count > 0 && count > top[0].Count {
 			foundNonZero = true

@@ -5,7 +5,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/openacid/slim/encode"
 	"github.com/openacid/slim/trie"
 )
 
@@ -21,30 +20,27 @@ import (
 //      ==> If they are really supposed to turn up often, if we do this only once every day
 //          or so it should prevent from long term memory growth. (Since eventually we will still run out of memory)
 
-var TrieCodec16 encode.I16 = encode.I16{}
-var TrieCodec64 encode.I64 = encode.I64{}
-
-type WordDiff struct {
-	Words map[string]int
+type WordDiff64 struct {
+	Words map[string]int64
 	// Maps do not allow concurrent reads and writes in Go, so we must use a mutex
 	mutex sync.Mutex
 }
 
-func NewWordDiff() *WordDiff {
-	return &WordDiff{
-		Words: make(map[string]int),
+func NewWordDiff64() *WordDiff64 {
+	return &WordDiff64{
+		Words: make(map[string]int64),
 	}
 }
 
-func (w *WordDiff) Lock() {
+func (w *WordDiff64) Lock() {
 	w.mutex.Lock()
 }
 
-func (w *WordDiff) Unlock() {
+func (w *WordDiff64) Unlock() {
 	w.mutex.Unlock()
 }
 
-func (w *WordDiff) IncWord(word string) {
+func (w *WordDiff64) IncWord(word string) {
 	w.Lock()
 	defer w.Unlock()
 
@@ -56,7 +52,7 @@ func (w *WordDiff) IncWord(word string) {
 	}
 }
 
-func (w *WordDiff) Get(word string) int {
+func (w *WordDiff64) Get(word string) int64 {
 	w.Lock()
 	defer w.Unlock()
 
@@ -68,7 +64,7 @@ func (w *WordDiff) Get(word string) int {
 	}
 }
 
-func (w *WordDiff) Add(diff *WordDiff) {
+func (w *WordDiff64) Add(diff *WordDiff64) {
 	diff.Lock()
 	w.Lock()
 	defer diff.Unlock()
@@ -83,7 +79,7 @@ func (w *WordDiff) Add(diff *WordDiff) {
 	}
 }
 
-func (w *WordDiff) AddTrie16(t *trie.SlimTrie) {
+func (w *WordDiff64) AddTrie16(t *trie.SlimTrie) {
 	w.Lock()
 	defer w.Unlock()
 
@@ -94,12 +90,12 @@ func (w *WordDiff) AddTrie16(t *trie.SlimTrie) {
 			currentCount = 0
 		}
 
-		w.Words[string(word)] = currentCount + int(count.(int16))
+		w.Words[string(word)] = currentCount + int64(count.(int16))
 		return true
 	})
 }
 
-func (w *WordDiff) AddTrie64(t *trie.SlimTrie) {
+func (w *WordDiff64) AddTrie64(t *trie.SlimTrie) {
 	w.Lock()
 	defer w.Unlock()
 
@@ -110,12 +106,12 @@ func (w *WordDiff) AddTrie64(t *trie.SlimTrie) {
 			currentCount = 0
 		}
 
-		w.Words[string(word)] = currentCount + int(count.(int64))
+		w.Words[string(word)] = currentCount + count.(int64)
 		return true
 	})
 }
 
-func (w *WordDiff) Sub(diff *WordDiff) {
+func (w *WordDiff64) Sub(diff *WordDiff64) {
 	diff.Lock()
 	w.Lock()
 	defer diff.Unlock()
@@ -138,7 +134,7 @@ func (w *WordDiff) Sub(diff *WordDiff) {
 	}
 }
 
-func (w *WordDiff) SubTrie16(t *trie.SlimTrie) {
+func (w *WordDiff64) SubTrie16(t *trie.SlimTrie) {
 	w.Lock()
 	defer w.Unlock()
 
@@ -149,16 +145,16 @@ func (w *WordDiff) SubTrie16(t *trie.SlimTrie) {
 			currentCount = 0
 		}
 
-		if currentCount < int(count.(int16)) {
+		if currentCount < int64(count.(int16)) {
 			delete(w.Words, string(word))
 		} else {
-			w.Words[string(word)] = currentCount - int(count.(int16))
+			w.Words[string(word)] = currentCount - int64(count.(int16))
 		}
 		return true
 	})
 }
 
-func (w *WordDiff) SubTrie64(t *trie.SlimTrie) {
+func (w *WordDiff64) SubTrie64(t *trie.SlimTrie) {
 	w.Lock()
 	defer w.Unlock()
 
@@ -169,24 +165,24 @@ func (w *WordDiff) SubTrie64(t *trie.SlimTrie) {
 			currentCount = 0
 		}
 
-		if currentCount < int(count.(int64)) {
+		if currentCount < count.(int64) {
 			delete(w.Words, string(word))
 		} else {
-			w.Words[string(word)] = currentCount - int(count.(int64))
+			w.Words[string(word)] = currentCount - count.(int64)
 		}
 		return true
 	})
 }
 
-func (w *WordDiff) GetSlimTrie16() *trie.SlimTrie {
-	counts := NewCountSlice16()
+func (w *WordDiff64) GetSlimTrie64() *trie.SlimTrie {
+	counts := NewCountSlice64()
 	for word, count := range w.Words {
-		counts.Add(word, int16(count))
+		counts.Add(word, int64(count))
 	}
 
 	sort.Sort(counts)
 
-	out, err := trie.NewSlimTrie(TrieCodec16, counts.StringSlice, counts.Counts, trie.Opt{
+	out, err := trie.NewSlimTrie(TrieCodec64, counts.StringSlice, counts.Counts, trie.Opt{
 		Complete: trie.Bool(true),
 	})
 	if err != nil {
