@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -89,7 +90,11 @@ func streamTweets(tweets chan<- StreamDataSchema) {
 		if err != nil {
 			log.Println("Got error while reading bytes:", err)
 			// try to read again. Usually it is because the twitter API had nothing to give.
-			continue
+			if err == io.EOF {
+				break
+			} else {
+				continue
+			}
 		}
 
 		data := StreamDataSchema{}
