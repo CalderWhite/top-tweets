@@ -10,17 +10,12 @@ import (
 )
 
 /**
- * After much research, it turns out that a Go hashmap is sufficient for our word diff.
- * We can save a lot of space by serializing them as SlimTries, but when in memory using a
- * trie has far too much memory overhead for almost not performance gain. A HAT-Trie could be used,
- * but the existing libraries were lacking 64 bit integers, and a port of tessil's HAT-Trie would be too much work.
- * Thus, a map[string]int and map[string]int64 will suffice.
+ * The current design for this module is: hashmap (map[string]int) for hot data, and periodic compression to a SlimTrie
+ * to prevent heap large heap growth. A hashmap already doesn't have a huge memory footprint, but by using this hybrid approach
+ * the heap is extremely stable.
+ *
+ * Using a HAT-Trie would be the best here, but I have yet to find a Go port that supports 64-bit integers.
  */
-
-// TODO: Add a Prune() function that deletes all words with count 1.
-//      ==> If they are really supposed to turn up often, if we do this only once every day
-//          or so it should prevent from long term memory growth. (Since eventually we will still run out of memory)
-
 var TrieCodec16 encode.I16 = encode.I16{}
 var TrieCodec64 encode.I64 = encode.I64{}
 
@@ -204,6 +199,8 @@ func (w *WordDiff) Walk(walkFunc func(string, int)) {
 func (w *WordDiff) GetSlimTrie16Unlocked() *trie.SlimTrie {
 	counts := NewCountSlice16()
 	w.WalkUnlocked(func(word string, count int) {
+		// could potentially delete word from the map at this point, reducing the memory overhead.
+		// I think the heap would still be fragmented though, so there isn't actually a significant advantage to this.
 		counts.Add(word, int16(count))
 	})
 
