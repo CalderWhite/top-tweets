@@ -20,6 +20,9 @@ import (
 //      ==> If they are really supposed to turn up often, if we do this only once every day
 //          or so it should prevent from long term memory growth. (Since eventually we will still run out of memory)
 
+// NOTE: ONLY ACCESS USING .Get() and .GetUnlocked()
+//       .Get() handles the merge between the SlimTrie and the map.
+
 type WordDiff64 struct {
 	Words map[string]int64
 	// Maps do not allow concurrent reads and writes in Go, so we must use a mutex
@@ -52,16 +55,20 @@ func (w *WordDiff64) IncWord(word string) {
 	}
 }
 
-func (w *WordDiff64) Get(word string) int64 {
-	w.Lock()
-	defer w.Unlock()
-
+func (w *WordDiff64) GetUnlocked(word string) int64 {
 	count, ok := w.Words[word]
 	if !ok {
 		return 0
 	} else {
 		return count
 	}
+}
+
+func (w *WordDiff64) Get(word string) int64 {
+	w.Lock()
+	defer w.Unlock()
+
+	return w.GetUnlocked(word)
 }
 
 func (w *WordDiff64) Add(diff *WordDiff64) {

@@ -31,8 +31,6 @@ import (
  * without this method.
  */
 
-// TODO: Routinely compress WordDiffs to SlimTries and work with a hybrid. This could probably save a lot of memory
-
 // the amount of tweets required to trigger a push to the wordDiffQueue
 const AGG_SIZE int = 300
 
@@ -182,9 +180,10 @@ func getTop(topAmount int) []WordPair {
 	longGlobalDiff.Lock()
 	defer globalDiff.Unlock()
 	defer longGlobalDiff.Unlock()
-	for word, count := range globalDiff.Words {
-		longCount, ok := longGlobalDiff.Words[word]
-		if !ok {
+	for word, _ := range globalDiff.Words {
+		count := globalDiff.GetUnlocked(word)
+		longCount := longGlobalDiff.GetUnlocked(word)
+		if longCount == 0 {
 			continue
 		}
 

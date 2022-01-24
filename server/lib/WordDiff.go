@@ -21,6 +21,9 @@ import (
 //      ==> If they are really supposed to turn up often, if we do this only once every day
 //          or so it should prevent from long term memory growth. (Since eventually we will still run out of memory)
 
+// NOTE: ONLY ACCESS USING .Get() and .GetUnlocked()
+//       .Get() handles the merge between the SlimTrie and the map.
+
 var TrieCodec16 encode.I16 = encode.I16{}
 var TrieCodec64 encode.I64 = encode.I64{}
 
@@ -56,16 +59,20 @@ func (w *WordDiff) IncWord(word string) {
 	}
 }
 
-func (w *WordDiff) Get(word string) int {
-	w.Lock()
-	defer w.Unlock()
-
+func (w *WordDiff) GetUnlocked(word string) int {
 	count, ok := w.Words[word]
 	if !ok {
 		return 0
 	} else {
 		return count
 	}
+}
+
+func (w *WordDiff) Get(word string) int {
+	w.Lock()
+	defer w.Unlock()
+
+	return w.GetUnlocked(word)
 }
 
 func (w *WordDiff) Add(diff *WordDiff) {
