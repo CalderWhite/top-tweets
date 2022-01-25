@@ -15,12 +15,14 @@ func main() {
 	r := gin.Default()
 	r.Static("/static", "./build/static")
 
+    api := r.Group("/api")
+
 	/**
 	 * Gets the top [limit] words (default 100), adjusted by the longGlobalDiff.
 	 * This adjustment allows top to produce emerging and interesting words, instead of
 	 * stopwords like "the" or "los" (in spanish), etc.
 	 */
-	r.GET("/api/words/top", func(c *gin.Context) {
+	api.GET("/words/top", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		limitParam, found := q["limit"]
 		var limit int
@@ -49,7 +51,7 @@ func main() {
 		})
 	})
 
-	r.GET("/api/words/unique_count", func(c *gin.Context) {
+	api.GET("/words/unique_count", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 		targetCountStr, targetCountFound := q["count"]
@@ -112,7 +114,7 @@ func main() {
 	 * period = [ focus | long ]
 	 * For the [long] period, we use longGlobalDiff. For [focus] we use globalDiff.
 	 */
-	r.GET("/api/word/:word", func(c *gin.Context) {
+	api.GET("/word/:word", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 
@@ -143,7 +145,7 @@ func main() {
 	 *
 	 * NOTE: The returned data is binary.
 	 */
-	r.GET("/api/snapshot", func(c *gin.Context) {
+	api.GET("/snapshot", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 
@@ -162,7 +164,7 @@ func main() {
 		}
 	})
 
-	r.GET("/api/chunks/last", func(c *gin.Context) {
+	api.GET("/chunks/last", func(c *gin.Context) {
 		diff, ok := wordDiffQueue.Last().(*lib.WordDiff)
 		if ok {
             buffer := diff.Serialize()
