@@ -5,3 +5,5 @@ pkg
 build
 .vscode
 .vs
+server.exe
+server
