@@ -10,7 +10,7 @@ COPY go.sum go.sum
 RUN go mod download
 
 COPY . .
-RUN go build -o ./webServer main.go twitterWorker.go
+RUN go build -o ./webServer topTweets.go twitterWorker.go
 
 COPY build build
 

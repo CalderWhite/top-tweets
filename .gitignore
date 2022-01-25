@@ -7,3 +7,5 @@ build
 .vs
 server.exe
 server
+topTweets
+dbSidecar

@@ -99,7 +99,7 @@ func (w *WordDiff64) Walk(walkFunc func(string, int64)) {
 	w.WalkUnlocked(walkFunc)
 }
 
-func (w *WordDiff64) Serialize() *bytes.Buffer {
+func (w *WordDiff64) Serialize() []byte {
     buffer := bytes.NewBuffer([]byte{})
     encoder := gob.NewEncoder(buffer)
     err := encoder.Encode(w)
@@ -107,5 +107,5 @@ func (w *WordDiff64) Serialize() *bytes.Buffer {
         log.Fatal(err)
     }
 
-    return buffer
+    return buffer.Bytes()
 }

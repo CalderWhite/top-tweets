@@ -62,6 +62,7 @@ type WordPair struct {
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff()
 var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
+var chunkUpdateChannel = make(chan int)
 var globalTweetCount int64
 
 func streamTweets(tweets chan<- StreamDataSchema) {
@@ -155,8 +156,10 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			}
 
 			wordDiffQueue.Enqueue(diff)
-
 			diff = lib.NewWordDiff()
+
+            // update the chunkUpdate channel
+            chunkUpdateChannel <- 0
 		}
 	}
 }
