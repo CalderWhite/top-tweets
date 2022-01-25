@@ -83,13 +83,13 @@ func main() {
 			}
 		} else if period[0] == "long" {
 			if targetCountFound {
-				longGlobalDiff.Walk(func(word string, count int64) {
-					if count == targetCount {
+				longGlobalDiff.Walk(func(word string, count int) {
+					if int64(count) == targetCount {
 						total++
 					}
 				})
 			} else {
-				longGlobalDiff.Walk(func(word string, count int64) {
+				longGlobalDiff.Walk(func(word string, count int) {
 					total++
 				})
 			}

@@ -61,7 +61,7 @@ type WordPair struct {
 
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff()
-var longGlobalDiff *lib.WordDiff64 = lib.NewWordDiff64()
+var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
 var globalTweetCount int64
 
 func streamTweets(tweets chan<- StreamDataSchema) {
@@ -185,7 +185,7 @@ func getTop(topAmount int) []WordPair {
 	defer globalDiff.Unlock()
 	defer longGlobalDiff.Unlock()
 	globalDiff.WalkUnlocked(func(word string, count int) {
-		longCount := longGlobalDiff.GetUnlocked(word)
+		longCount := int64(longGlobalDiff.GetUnlocked(word))
 		if longCount == 0 {
 			return
 		}
