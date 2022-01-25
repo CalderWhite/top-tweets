@@ -2,9 +2,10 @@ package main
 
 import (
 	"strconv"
+    "io"
 
 	"github.com/gin-gonic/gin"
-    "github.com/CalderWhite/top-tweets/server/lib"
+    "github.com/CalderWhite/top-tweets/lib"
 )
 
 /**
@@ -15,12 +16,14 @@ func main() {
 	r := gin.Default()
 	r.Static("/static", "./build/static")
 
+    api := r.Group("/api")
+
 	/**
 	 * Gets the top [limit] words (default 100), adjusted by the longGlobalDiff.
 	 * This adjustment allows top to produce emerging and interesting words, instead of
 	 * stopwords like "the" or "los" (in spanish), etc.
 	 */
-	r.GET("/api/words/top", func(c *gin.Context) {
+	api.GET("/words/top", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		limitParam, found := q["limit"]
 		var limit int
@@ -49,7 +52,7 @@ func main() {
 		})
 	})
 
-	r.GET("/api/words/unique_count", func(c *gin.Context) {
+	api.GET("/words/unique_count", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 		targetCountStr, targetCountFound := q["count"]
@@ -112,7 +115,7 @@ func main() {
 	 * period = [ focus | long ]
 	 * For the [long] period, we use longGlobalDiff. For [focus] we use globalDiff.
 	 */
-	r.GET("/api/word/:word", func(c *gin.Context) {
+	api.GET("/word/:word", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 
@@ -143,16 +146,14 @@ func main() {
 	 *
 	 * NOTE: The returned data is binary.
 	 */
-	r.GET("/api/snapshot", func(c *gin.Context) {
+	api.GET("/snapshot", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 
 		if !periodFound || period[0] == "focus" {
-			buffer := globalDiff.Serialize()
-			c.Data(200, "application", buffer.Bytes())
+			c.Data(200, "application", globalDiff.Serialize())
 		} else if period[0] == "long" {
-			buffer := longGlobalDiff.Serialize()
-			c.Data(200, "application", buffer.Bytes())
+			c.Data(200, "application", longGlobalDiff.Serialize())
 		} else {
 			c.JSON(400, gin.H{
 				"status":  "error",
@@ -162,11 +163,10 @@ func main() {
 		}
 	})
 
-	r.GET("/api/chunks/last", func(c *gin.Context) {
+	api.GET("/chunks/last", func(c *gin.Context) {
 		diff, ok := wordDiffQueue.Last().(*lib.WordDiff)
 		if ok {
-            buffer := diff.Serialize()
-			c.Data(200, "application", buffer.Bytes())
+			c.Data(200, "application", diff.Serialize())
 		} else {
 			c.JSON(500, gin.H{
 				"status":  "error",
@@ -175,6 +175,14 @@ func main() {
 			})
 		}
 	})
+
+    api.GET("/chunks/stream", func (c *gin.Context) {
+        c.Stream(func (w io.Writer) bool {
+            <-chunkUpdateChannel
+            w.Write([]byte("update\n"))
+            return true
+        })
+    })
 
 	r.GET("/", func(c *gin.Context) {
 		c.File("build/index.html")

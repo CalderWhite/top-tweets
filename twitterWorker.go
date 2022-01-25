@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CalderWhite/top-tweets/server/lib"
+	"github.com/CalderWhite/top-tweets/lib"
 )
 
 // mtrie --> Mutable trie
@@ -37,10 +37,10 @@ const AGG_SIZE int = 300
 /**
  * (100) * (100) -- last 4 minutes
  * (300) * (100) -- last 12 minutes
- *
+ * (300) * (300) -- last 36 minutes
  *
  */
-const FOCUS_PERIOD int = 4
+const FOCUS_PERIOD int = 300
 
 // the number of tweets between WordDiff.Compress() calls
 const COMPRESS_PERIOD int = 5000
@@ -62,6 +62,7 @@ type WordPair struct {
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff()
 var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
+var chunkUpdateChannel = make(chan int)
 var globalTweetCount int64
 
 func streamTweets(tweets chan<- StreamDataSchema) {
@@ -155,8 +156,10 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			}
 
 			wordDiffQueue.Enqueue(diff)
-
 			diff = lib.NewWordDiff()
+
+            // update the chunkUpdate channel
+            chunkUpdateChannel <- 0
 		}
 	}
 }

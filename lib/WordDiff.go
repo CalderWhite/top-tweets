@@ -1,22 +1,21 @@
 package lib
 
 import (
-	"sync"
-    "bytes"
-    "log"
     "encoding/gob"
-    "github.com/CalderWhite/top-tweets/server/lib/radix"
+    "bytes"
+	"sync"
+    "log"
 )
 
 type WordDiff struct {
-    Tree *radix.Tree
+	Words map[string]int
 	// Maps do not allow concurrent reads and writes in Go, so we must use a mutex
 	mutex sync.Mutex
 }
 
 func NewWordDiff() *WordDiff {
 	w := &WordDiff{}
-    w.Tree = radix.New()
+	w.Words = make(map[string]int)
 
 	return w
 }
@@ -33,21 +32,21 @@ func (w *WordDiff) IncWord(word string) {
 	w.Lock()
 	defer w.Unlock()
 
-	count, ok := w.Tree.Get(word)
+	count, ok := w.Words[word]
 	if !ok {
-        w.Tree.Insert(word, 1)
+		w.Words[word] = 1
 	} else {
-        w.Tree.Insert(word, count.(int) + 1)
+		w.Words[word] = count + 1
 	}
 }
 
 func (w *WordDiff) GetUnlocked(word string) int {
-	count, ok := w.Tree.Get(word)
+	count, ok := w.Words[word]
 	if !ok {
-        return 0
-	} else {
-        return count.(int)
-    }
+		count = 0
+	}
+
+	return count
 }
 
 func (w *WordDiff) Get(word string) int {
@@ -63,14 +62,13 @@ func (w *WordDiff) Add(diff *WordDiff) {
 	defer diff.Unlock()
 	defer w.Unlock()
 
-    diff.WalkUnlocked(func (word string, count int) {
-		currentCount, ok := w.Tree.Get(word)
+	for word, count := range diff.Words {
+		currentCount, ok := w.Words[word]
 		if !ok {
-            w.Tree.Insert(word, count)
-		} else {
-            w.Tree.Insert(word, currentCount.(int) + count)
-        }
-    })
+			currentCount = 0
+		}
+		w.Words[word] = currentCount + count
+	}
 }
 
 func (w *WordDiff) Sub(diff *WordDiff) {
@@ -79,21 +77,20 @@ func (w *WordDiff) Sub(diff *WordDiff) {
 	defer diff.Unlock()
 	defer w.Unlock()
 
-    diff.WalkUnlocked(func (word string, count int) {
-		currentCount, ok := w.Tree.Get(word)
+	for word, count := range diff.Words {
+		currentCount, ok := w.Words[word]
 		if !ok {
-            w.Tree.Insert(word, -count)
-		} else {
-            w.Tree.Insert(word, currentCount.(int) - count)
-        }
-    })
+			currentCount = 0
+		}
+
+		w.Words[word] = currentCount - count
+	}
 }
 
 func (w *WordDiff) WalkUnlocked(walkFunc func(string, int)) {
-    w.Tree.Walk(func (word string, count interface{}) bool {
-        walkFunc(word, count.(int))
-        return false
-    })
+	for word := range w.Words {
+		walkFunc(word, w.GetUnlocked(word))
+	}
 }
 
 func (w *WordDiff) Walk(walkFunc func(string, int)) {
@@ -103,7 +100,7 @@ func (w *WordDiff) Walk(walkFunc func(string, int)) {
 	w.WalkUnlocked(walkFunc)
 }
 
-func (w *WordDiff) Serialize() *bytes.Buffer {
+func (w *WordDiff) Serialize() []byte {
     buffer := bytes.NewBuffer([]byte{})
     encoder := gob.NewEncoder(buffer)
     err := encoder.Encode(w)
@@ -111,5 +108,5 @@ func (w *WordDiff) Serialize() *bytes.Buffer {
         log.Fatal(err)
     }
 
-    return buffer
+    return buffer.Bytes()
 }
