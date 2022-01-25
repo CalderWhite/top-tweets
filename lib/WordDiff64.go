@@ -100,6 +100,8 @@ func (w *WordDiff64) Walk(walkFunc func(string, int64)) {
 }
 
 func (w *WordDiff64) Serialize() []byte {
+    w.Lock()
+    defer w.Unlock()
     buffer := bytes.NewBuffer([]byte{})
     encoder := gob.NewEncoder(buffer)
     err := encoder.Encode(w)
