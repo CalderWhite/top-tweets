@@ -5,12 +5,12 @@ WORKDIR /app
 # Put this before copying the full src over so we don't reinstall
 # the required modules every time a file is changed.
 RUN mkdir src
-COPY server/go.mod go.mod
-COPY server/go.sum go.sum
+COPY go.mod go.mod
+COPY go.sum go.sum
 RUN go mod download
 
-COPY server .
-RUN go build -o ./webServer
+COPY . .
+RUN go build -o ./webServer main.go twitterWorker.go
 
 COPY build build
 
