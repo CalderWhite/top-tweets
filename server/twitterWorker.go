@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/CalderWhite/top-tweets/server/lib"
-
-	"github.com/openacid/slim/trie"
 )
 
 // mtrie --> Mutable trie
@@ -63,7 +61,7 @@ type WordPair struct {
 
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff()
-var longGlobalDiff *lib.WordDiff64 = lib.NewWordDiff64()
+var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
 var globalTweetCount int64
 
 func streamTweets(tweets chan<- StreamDataSchema) {
@@ -147,23 +145,16 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			}
 		}
 
-		if globalTweetCount%int64(COMPRESS_PERIOD) == 0 {
-			//globalDiff.Compress()
-			//longGlobalDiff.Compress()
-		}
-
 		if tweetCount == 0 {
 			if wordDiffQueue.IsFull() {
-				oldestDiff, ok := wordDiffQueue.Dequeue().(*trie.SlimTrie)
+				oldestDiff, ok := wordDiffQueue.Dequeue().(*lib.WordDiff)
 				if !ok {
 					log.Panic("Could not convert dequeued object to WordDiff.")
 				}
-				globalDiff.SubTrie16(oldestDiff)
+				globalDiff.Sub(oldestDiff)
 			}
 
-			// XXX: The data disappears here
-			sTrie := diff.GetSlimTrie16()
-			wordDiffQueue.Enqueue(sTrie)
+			wordDiffQueue.Enqueue(diff)
 
 			diff = lib.NewWordDiff()
 		}
@@ -194,7 +185,7 @@ func getTop(topAmount int) []WordPair {
 	defer globalDiff.Unlock()
 	defer longGlobalDiff.Unlock()
 	globalDiff.WalkUnlocked(func(word string, count int) {
-		longCount := longGlobalDiff.GetUnlocked(word)
+		longCount := int64(longGlobalDiff.GetUnlocked(word))
 		if longCount == 0 {
 			return
 		}

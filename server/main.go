@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/openacid/slim/trie"
 )
 
 /**
@@ -83,13 +82,13 @@ func main() {
 			}
 		} else if period[0] == "long" {
 			if targetCountFound {
-				longGlobalDiff.Walk(func(word string, count int64) {
-					if count == targetCount {
+				longGlobalDiff.Walk(func(word string, count int) {
+					if int64(count) == targetCount {
 						total++
 					}
 				})
 			} else {
-				longGlobalDiff.Walk(func(word string, count int64) {
+				longGlobalDiff.Walk(func(word string, count int) {
 					total++
 				})
 			}
@@ -143,6 +142,7 @@ func main() {
 	 *
 	 * NOTE: The returned data is binary.
 	 */
+     /*
 	r.GET("/api/snapshot", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
@@ -177,7 +177,9 @@ func main() {
 			})
 		}
 	})
+    */
 
+    /*
 	r.GET("/api/chunks/last", func(c *gin.Context) {
 		diff, ok := wordDiffQueue.Last().(*trie.SlimTrie)
 		if ok {
@@ -199,6 +201,7 @@ func main() {
 			})
 		}
 	})
+    */
 
 	r.GET("/", func(c *gin.Context) {
 		c.File("build/index.html")
