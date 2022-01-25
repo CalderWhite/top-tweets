@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+    "github.com/CalderWhite/top-tweets/server/lib"
 )
 
 /**
@@ -142,33 +143,16 @@ func main() {
 	 *
 	 * NOTE: The returned data is binary.
 	 */
-     /*
 	r.GET("/api/snapshot", func(c *gin.Context) {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 
 		if !periodFound || period[0] == "focus" {
-			bytes, err := globalDiff.GetSlimTrie16().Marshal()
-			if err == nil {
-				c.Data(200, "application", bytes)
-			} else {
-				c.JSON(500, gin.H{
-					"status":  "error",
-					"code":    500,
-					"message": "Server ran into error marshalling data.",
-				})
-			}
+			buffer := globalDiff.Serialize()
+			c.Data(200, "application", buffer.Bytes())
 		} else if period[0] == "long" {
-			bytes, err := longGlobalDiff.GetSlimTrie64().Marshal()
-			if err == nil {
-				c.Data(200, "application", bytes)
-			} else {
-				c.JSON(500, gin.H{
-					"status":  "error",
-					"code":    500,
-					"message": "Server ran into error marshalling data.",
-				})
-			}
+			buffer := longGlobalDiff.Serialize()
+			c.Data(200, "application", buffer.Bytes())
 		} else {
 			c.JSON(400, gin.H{
 				"status":  "error",
@@ -177,22 +161,12 @@ func main() {
 			})
 		}
 	})
-    */
 
-    /*
 	r.GET("/api/chunks/last", func(c *gin.Context) {
-		diff, ok := wordDiffQueue.Last().(*trie.SlimTrie)
+		diff, ok := wordDiffQueue.Last().(*lib.WordDiff)
 		if ok {
-			bytes, err := diff.Marshal()
-			if err == nil {
-				c.Data(200, "application", bytes)
-			} else {
-				c.JSON(500, gin.H{
-					"status":  "error",
-					"code":    500,
-					"message": "Server ran into error marshalling data.",
-				})
-			}
+            buffer := diff.Serialize()
+			c.Data(200, "application", buffer.Bytes())
 		} else {
 			c.JSON(500, gin.H{
 				"status":  "error",
@@ -201,7 +175,6 @@ func main() {
 			})
 		}
 	})
-    */
 
 	r.GET("/", func(c *gin.Context) {
 		c.File("build/index.html")
