@@ -37,10 +37,10 @@ const AGG_SIZE int = 300
 /**
  * (100) * (100) -- last 4 minutes
  * (300) * (100) -- last 12 minutes
- *
+ * (300) * (300) -- last 36 minutes
  *
  */
-const FOCUS_PERIOD int = 4
+const FOCUS_PERIOD int = 300
 
 // the number of tweets between WordDiff.Compress() calls
 const COMPRESS_PERIOD int = 5000
