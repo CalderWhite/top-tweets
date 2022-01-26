@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+    "bytes"
 	"encoding/json"
+    "encoding/gob"
 	"io"
 	"io/ioutil"
 	"log"
@@ -31,7 +33,7 @@ import (
  */
 
 // the amount of tweets required to trigger a push to the wordDiffQueue
-const AGG_SIZE int = 300
+var AGG_SIZE int = 300
 
 // the number of AGG_SIZE tweet blocks that will be considered at one time. Once exceeded, we will start deleteing blocks
 /**
@@ -40,12 +42,14 @@ const AGG_SIZE int = 300
  * (300) * (300) -- last 36 minutes
  *
  */
-const FOCUS_PERIOD int = 300
+var FOCUS_PERIOD int = 300
 
 // after this many tweets, we will prune all (1) counts in longGlobalDiff, and (0) counts in globalDiff
 // 0 counts have literally no impact, and 1 counts have an infinitesimal impact on the longGlobalDiff when divided by
 // the globalTweetCount
 const PRUNE_PERIOD int = 10000
+
+const recoveryFileName = "backups/top_tweets_recovery.dat"
 
 type StreamDataSchema struct {
 	Data struct {
@@ -61,11 +65,72 @@ type WordPair struct {
 	Count int    `json:"count"`
 }
 
+
+// we could use the database for this, but this gobbing this struct
+// reduces coupling and is also faster to ship.
+// if storing the long diff becomes too great of a burden, we can add db capabilities to reconstruct it.
+type RecoveryPoint struct {
+    GlobalTweetCount int64
+    LongDiff *lib.WordDiff
+    AggSize int
+    FocusPeriod int
+    Diffs *lib.CircularQueuePublic
+}
+
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
 var globalDiff *lib.WordDiff = lib.NewWordDiff()
 var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
 var chunkUpdateChannel = make(chan int)
 var globalTweetCount int64
+
+func createBackup() {
+    longGlobalDiff.Lock()
+    defer longGlobalDiff.Unlock()
+    // we don't read from the individual members of the queue, so we can get away with
+    // not locking every single one of them
+    d := &RecoveryPoint{
+        GlobalTweetCount: globalTweetCount,
+        LongDiff: longGlobalDiff,
+        AggSize: AGG_SIZE,
+        FocusPeriod: FOCUS_PERIOD,
+        Diffs: wordDiffQueue.Public(),
+    }
+    gob.Register(*((wordDiffQueue.Last()).(*lib.WordDiff)))
+
+    buffer := bytes.NewBuffer([]byte{})
+    encoder := gob.NewEncoder(buffer)
+    err := encoder.Encode(d)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    os.WriteFile(recoveryFileName, buffer.Bytes(), 0644)
+}
+
+func restoreFromBackup() {
+    longGlobalDiff.Lock()
+    defer longGlobalDiff.Unlock()
+    file, err := os.Open(recoveryFileName)
+    if err != nil {
+        log.Println("Could not open recovery file due to: ", err)
+        log.Println("Starting without recovery...")
+        return
+    }
+
+    gob.Register(*lib.NewWordDiff())
+    decoder := gob.NewDecoder(file)
+    recovery := &RecoveryPoint{}
+    err = decoder.Decode(&recovery)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    globalTweetCount = recovery.GlobalTweetCount
+    longGlobalDiff = recovery.LongDiff
+    AGG_SIZE = recovery.AggSize
+    FOCUS_PERIOD = recovery.FocusPeriod
+    wordDiffQueue.SetQueue(recovery.Diffs)
+}
 
 func streamTweets(tweets chan<- StreamDataSchema) {
 	client := &http.Client{}
@@ -145,9 +210,12 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			}
 		}
 
-		if globalTweetCount%int64(AGG_SIZE) == 0 {
+		if globalTweetCount%int64(PRUNE_PERIOD) == 0 {
             globalDiff.Prune(0)
             longGlobalDiff.Prune(1)
+
+            // right after pruning, store the backup
+            createBackup()
         }
 
 		if globalTweetCount%int64(AGG_SIZE) == 0 {
@@ -169,6 +237,9 @@ func processTweets(tweets <-chan StreamDataSchema) {
 }
 
 func tweetsWorker() {
+    // this may fail, in which case we just start all of the values from empty (and zero)
+    restoreFromBackup()
+
 	tweets := make(chan StreamDataSchema)
 	go processTweets(tweets)
 

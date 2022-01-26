@@ -10,6 +10,13 @@ type CircularQueue struct {
 	tail     int
 }
 
+type CircularQueuePublic struct {
+	Data     []interface{}
+	Capacity int
+	Head     int
+	Tail     int
+}
+
 // NewCircularQueue creates a queue
 func NewCircularQueue(n int) *CircularQueue {
 	if n == 0 {
@@ -84,4 +91,21 @@ func (q *CircularQueue) String() string {
 	}
 	result += "<-tail"
 	return result
+}
+
+// expose the data so we can gob it.
+func (q *CircularQueue) Public() *CircularQueuePublic {
+    return &CircularQueuePublic{
+        Data: q.data,
+        Capacity: q.capacity,
+        Head: q.head,
+        Tail: q.tail,
+    }
+}
+
+func (q *CircularQueue) SetQueue(p *CircularQueuePublic) {
+    q.capacity = p.Capacity
+    q.data = append(q.data, p.Data...)
+    q.head = p.Head
+    q.tail = p.Tail
 }

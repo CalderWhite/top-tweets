@@ -8,6 +8,7 @@ import (
     "encoding/gob"
     "time"
     "context"
+    "fmt"
 
     "github.com/jackc/pgx/v4"
 
@@ -24,12 +25,19 @@ import (
  *       and switch the index to 64-bit, OR do the symbol table ourselves.
  */
 
+// when run outside of docker-compose, these can both be set to "localhost"
+const (
+    questDbHost   = "questdb"
+    topTweetsHost = "top_tweets"
+)
+
 var chunkUpdateChannel = make(chan int)
 var conn *pgx.Conn
 
 func subscribeToAPI() {
 	client := &http.Client{}
-    req, err := http.NewRequest("GET", "http://localhost:8080/api/chunks/stream", nil)
+    req_url := fmt.Sprintf("http://%s:8080/api/chunks/stream", topTweetsHost)
+    req, err := http.NewRequest("GET", req_url, nil)
     if err != nil {
         log.Println(err)
         return
@@ -93,7 +101,8 @@ func insertRows(ctx context.Context, diff *lib.WordDiff) {
 func dbWorker() {
     ctx := context.Background()
     var err error
-    conn, err = pgx.Connect(ctx, "postgresql://admin:quest@localhost:8812/qdb")
+    conn_url := fmt.Sprintf("postgresql://admin:quest@%s:8812/qdb", questDbHost)
+    conn, err = pgx.Connect(ctx, conn_url)
     if err != nil {
         log.Println(err)
         return
@@ -113,7 +122,8 @@ func dbWorker() {
     for {
         <-chunkUpdateChannel
 
-        resp, err := http.Get("http://localhost:8080/api/chunks/last")
+        req_url := fmt.Sprintf("http://%s:8080/api/chunks/last", topTweetsHost)
+        resp, err := http.Get(req_url)
         if err != nil {
             log.Println(err)
             return

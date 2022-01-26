@@ -1,0 +1,30 @@
+version: "3"
+
+services:
+  questdb:
+    image: questdb/questdb
+    ports:
+      - "9000:9000"
+      - "9009:9009"
+      - "8812:8812"
+      - "9003:9003"
+    volumes:
+      - type: bind
+        source: ./db
+        target: /root/.questdb
+  top_tweets:
+    build: .
+    image: calderwhite/top-tweets
+    ports:
+      - "80:8080"
+    environment:
+      - TWITTER_BEARER
+    volumes:
+      - type: bind
+        source: ./backups
+        target: /app/backups
+  db_sidecar:
+    build: 
+      context: .
+      dockerfile: dockerfiles/db_sidecar
+    image: calderwhite/db-sidecar
