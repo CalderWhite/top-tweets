@@ -11,3 +11,4 @@ topTweets
 dbSidecar
 db
 backups
+backups/*
