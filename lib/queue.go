@@ -106,7 +106,7 @@ func (q *CircularQueue) Public() *CircularQueuePublic {
 func (q *CircularQueue) SetQueue(p *CircularQueuePublic) {
     q.capacity = p.Capacity
     for i, v := range p.Data {
-        q.data[i] = v
+        q.data[i] = &v
     }
     q.head = p.Head
     q.tail = p.Tail

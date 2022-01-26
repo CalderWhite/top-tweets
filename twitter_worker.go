@@ -35,7 +35,7 @@ import (
  */
 
 // the amount of tweets required to trigger a push to the wordDiffQueue
-var AGG_SIZE int = 150
+var AGG_SIZE int = 300
 
 // the number of AGG_SIZE tweet blocks that will be considered at one time. Once exceeded, we will start deleteing blocks
 /**
@@ -44,7 +44,7 @@ var AGG_SIZE int = 150
  * (300) * (300) -- last 36 minutes
  *
  */
-var FOCUS_PERIOD int = 100
+var FOCUS_PERIOD int = 300
 
 // after this many tweets, we will prune all (1) counts in longGlobalDiff, and (0) counts in globalDiff
 // 0 counts have literally no impact, and 1 counts have an infinitesimal impact on the longGlobalDiff when divided by
@@ -228,12 +228,12 @@ func processTweets(tweets <-chan StreamDataSchema) {
 		if globalTweetCount%int64(AGG_SIZE) == 0 {
 			if wordDiffQueue.IsFull() {
                 obj := wordDiffQueue.Dequeue()
-				oldestDiff, ok := obj.(lib.WordDiff)
+				oldestDiff, ok := obj.(*lib.WordDiff)
 				if !ok {
                     log.Printf("%T %v", obj, obj)
 					log.Panic("Could not convert dequeued object to WordDiff.")
 				}
-				globalDiff.Sub(&oldestDiff)
+				globalDiff.Sub(oldestDiff)
 			}
 
 			wordDiffQueue.Enqueue(diff)
