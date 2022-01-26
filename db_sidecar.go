@@ -43,7 +43,7 @@ func subscribeToAPI() {
 
 	if resp.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(resp.Body)
-		log.Fatal("Did not get 200 OK response from api stream.", string(body))
+		log.Println("Did not get 200 OK response from api stream.", string(body))
 		return
 	}
 
@@ -64,26 +64,29 @@ func insertRows(ctx context.Context, diff *lib.WordDiff) {
     // Prepared statement given the name 'ps1'
     _, err := conn.Prepare(ctx, "ps1", "INSERT INTO word_counts VALUES($1, $2, $3)")
     if err != nil {
-        log.Fatalln(err)
+        log.Println(err)
+        return
     }
     // Insert all rows in a single commit
     tx, err := conn.Begin(ctx)
     if err != nil {
-        log.Fatalln(err)
+        log.Println(err)
     }
 
     ts := time.Now()
     diff.Walk(func (word string, count int) {
         _, err = conn.Exec(ctx, "ps1", ts, word, int16(count))
         if err != nil {
-            log.Fatal(err)
+            log.Println(err)
+            return
         }
     })
 
     // Commit the transaction
     err = tx.Commit(ctx)
     if err != nil {
-        log.Fatalln(err)
+        log.Println(err)
+        return
     }
 }
 
@@ -91,10 +94,11 @@ func dbWorker() {
     ctx := context.Background()
     var err error
     conn, err = pgx.Connect(ctx, "postgresql://admin:quest@localhost:8812/qdb")
-    defer conn.Close(ctx)
     if err != nil {
-        log.Fatal(err)
+        log.Println(err)
+        return
     }
+    defer conn.Close(ctx)
 
     _, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS word_counts(
         ts TIMESTAMP,
@@ -102,7 +106,8 @@ func dbWorker() {
         count SHORT
     ) timestamp(ts)`)
     if err != nil {
-        log.Fatal("Failed to create schema ", err)
+        log.Println("Failed to create schema ", err)
+        return
     }
 
     for {
@@ -131,24 +136,15 @@ func dbWorker() {
     }
 }
 
-func capRetries(retryMaxWindow, maxRetries int, fn func()) {
-    lastDisconnect := time.Now().UnixMilli()
-    disconnectCount := 0
-    for {
-        fn()
-        disconnectCount++
-
-        if disconnectCount % maxRetries  == 0 {
-            t2 := time.Now().UnixMilli()
-            if t2 - lastDisconnect < int64(retryMaxWindow) {
-                time.Sleep(3 * time.Second)
-            }
-        }
-        lastDisconnect = time.Now().UnixMilli()
-    }
-}
-
 func main() {
-    go capRetries(5 * 5000, 5, dbWorker)
-    capRetries(5 * 5000, 5, subscribeToAPI)
+    go func() {
+        for {
+            dbWorker()
+            time.Sleep(1 * time.Second)
+        }
+    }()
+    for {
+        subscribeToAPI()
+        time.Sleep(1 * time.Second)
+    }
 }
