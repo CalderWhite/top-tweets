@@ -5,6 +5,7 @@ import (
     "bytes"
 	"encoding/json"
     "encoding/gob"
+    "errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+    "syscall"
 	"time"
 
 	"github.com/CalderWhite/top-tweets/lib"
@@ -33,7 +35,7 @@ import (
  */
 
 // the amount of tweets required to trigger a push to the wordDiffQueue
-var AGG_SIZE int = 300
+var AGG_SIZE int = 150
 
 // the number of AGG_SIZE tweet blocks that will be considered at one time. Once exceeded, we will start deleteing blocks
 /**
@@ -42,7 +44,7 @@ var AGG_SIZE int = 300
  * (300) * (300) -- last 36 minutes
  *
  */
-var FOCUS_PERIOD int = 300
+var FOCUS_PERIOD int = 100
 
 // after this many tweets, we will prune all (1) counts in longGlobalDiff, and (0) counts in globalDiff
 // 0 counts have literally no impact, and 1 counts have an infinitesimal impact on the longGlobalDiff when divided by
@@ -104,7 +106,10 @@ func createBackup() {
         log.Fatal(err)
     }
 
-    os.WriteFile(recoveryFileName, buffer.Bytes(), 0644)
+    err = os.WriteFile(recoveryFileName, buffer.Bytes(), 0644)
+    if err != nil {
+        log.Fatal(err)
+    }
 }
 
 func restoreFromBackup() {
@@ -158,7 +163,9 @@ func streamTweets(tweets chan<- StreamDataSchema) {
 			// try to read again. Usually it is because the twitter API had nothing to give.
 			if err == io.EOF {
 				break
-			} else {
+			} else if errors.Is(err, syscall.ECONNRESET) {
+                break
+            } else {
 				continue
 			}
 		}
@@ -220,18 +227,24 @@ func processTweets(tweets <-chan StreamDataSchema) {
 
 		if globalTweetCount%int64(AGG_SIZE) == 0 {
 			if wordDiffQueue.IsFull() {
-				oldestDiff, ok := wordDiffQueue.Dequeue().(*lib.WordDiff)
+                obj := wordDiffQueue.Dequeue()
+				oldestDiff, ok := obj.(lib.WordDiff)
 				if !ok {
+                    log.Printf("%T %v", obj, obj)
 					log.Panic("Could not convert dequeued object to WordDiff.")
 				}
-				globalDiff.Sub(oldestDiff)
+				globalDiff.Sub(&oldestDiff)
 			}
 
 			wordDiffQueue.Enqueue(diff)
 			diff = lib.NewWordDiff()
 
             // update the chunkUpdate channel
-            chunkUpdateChannel <- 0
+            select {
+            case chunkUpdateChannel <- 0:
+            default:
+                // message was not recieved, carry on.
+            }
 		}
 	}
 }
