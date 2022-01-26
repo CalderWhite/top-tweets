@@ -1,2 +1,3 @@
 pkg
-node_modules
+web/node_modules
+./db
