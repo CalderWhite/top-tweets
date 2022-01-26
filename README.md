@@ -4,22 +4,23 @@ Shows words that are in high use right now, while filtering out words that are a
 
 ## Some cool things I did for this
 
-- Used a map for hot data since it had lower overhead than tries
-- Compressed the maps after a fixed period using a [SlimTrie](https://github.com/openacid/slim) data structure (similar to [HAT-Trie](https://tessil.github.io/2017/06/22/hat-trie.html))
+- Used a columnstore database with a symbol table to highly compress data while without losing the ability to easily query it
 - Used some ideas from signal theory to deterministically extract "interesting" words (words of emerging popularity) among hundreds of thousands of words
 - Managed to make this extremely light weight. The program is highly performant on an AWS `t4g.nano` (2 vCPU, 0.5 GiB RAM)
 
 
 ## Building + Running
-To Build:
-```
-npm install
-npm run build
-docker build . -t top-tweets
-```
 
 
-To Run:
+For the main service:
 ```
-docker run --rm -it -e TWITTER_BEARER="$TWITTER_BEARER" -p 8080:8080 top-tweets
+cd web && npm install && npm run build && cd ..
+docker build . -t calderwhite/top-tweets
+docker run --rm -it -e TWITTER_BEARER -p 8080:8080 --name top-tweets calderwhite/top-tweets
+```
+
+For the db sidecar (what downloads the data stream into the database)
+```
+docker build -f dockerfiles/db-sidecar -t calderwhite/db-sidecar .
+docker run --rm -it --name db-sidecar --network=host calderwhite/db-sidecar
 ```
