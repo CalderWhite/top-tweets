@@ -100,6 +100,15 @@ func (w *WordDiff) Walk(walkFunc func(string, int)) {
 	w.WalkUnlocked(walkFunc)
 }
 
+// Note: An INCLUSIVE minimum count
+func (w *WordDiff) Prune(minCount int) {
+    w.Walk(func (word string, count int) {
+        if count <= minCount {
+            delete(w.Words, word)
+        }
+    })
+}
+
 func (w *WordDiff) Serialize() []byte {
     w.Lock()
     defer w.Unlock()

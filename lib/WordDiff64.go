@@ -99,6 +99,15 @@ func (w *WordDiff64) Walk(walkFunc func(string, int64)) {
 	w.WalkUnlocked(walkFunc)
 }
 
+// Note: An INCLUSIVE minimum count
+func (w *WordDiff64) Prune(minCount int64) {
+    w.Walk(func (word string, count int64) {
+        if count <= minCount {
+            delete(w.Words, word)
+        }
+    })
+}
+
 func (w *WordDiff64) Serialize() []byte {
     w.Lock()
     defer w.Unlock()

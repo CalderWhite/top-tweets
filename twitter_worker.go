@@ -42,8 +42,10 @@ const AGG_SIZE int = 300
  */
 const FOCUS_PERIOD int = 300
 
-// the number of tweets between WordDiff.Compress() calls
-const COMPRESS_PERIOD int = 5000
+// after this many tweets, we will prune all (1) counts in longGlobalDiff, and (0) counts in globalDiff
+// 0 counts have literally no impact, and 1 counts have an infinitesimal impact on the longGlobalDiff when divided by
+// the globalTweetCount
+const PRUNE_PERIOD int = 10000
 
 type StreamDataSchema struct {
 	Data struct {
@@ -128,11 +130,8 @@ func processTweets(tweets <-chan StreamDataSchema) {
 	delimRule := regexp.MustCompile(` |"|\.|\,|\!|\?|\:|、|\n`)
 
 	diff := lib.NewWordDiff()
-	tweetCount := 0
 	for tweet := range tweets {
 		globalTweetCount++
-		tweetCount++
-		tweetCount %= AGG_SIZE
 		// this is inefficient. If our process is slowing down, make this is a custom parser.
 		sanatizedText := urlRule.ReplaceAllString(tweet.Data.Text, "")
 		tokens := delimRule.Split(sanatizedText, -1)
@@ -146,7 +145,12 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			}
 		}
 
-		if tweetCount == 0 {
+		if globalTweetCount%int64(AGG_SIZE) == 0 {
+            globalDiff.Prune(0)
+            longGlobalDiff.Prune(1)
+        }
+
+		if globalTweetCount%int64(AGG_SIZE) == 0 {
 			if wordDiffQueue.IsFull() {
 				oldestDiff, ok := wordDiffQueue.Dequeue().(*lib.WordDiff)
 				if !ok {

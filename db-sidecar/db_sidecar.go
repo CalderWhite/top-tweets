@@ -29,7 +29,11 @@ var conn *pgx.Conn
 
 func subscribeToAPI() {
 	client := &http.Client{}
-    req, _ := http.NewRequest("GET", "http://localhost:8080/api/chunks/stream", nil)
+    req, err := http.NewRequest("GET", "http://localhost:8080/api/chunks/stream", nil)
+    if err != nil {
+        log.Println(err)
+        return
+    }
 	resp, err := client.Do(req)
 
 	if err != nil {
@@ -58,7 +62,7 @@ func subscribeToAPI() {
 
 func insertRows(ctx context.Context, diff *lib.WordDiff) {
     // Prepared statement given the name 'ps1'
-    _, err := conn.Prepare(ctx, "ps1", "INSERT INTO word_counts VALUES(now(), $1, $2)")
+    _, err := conn.Prepare(ctx, "ps1", "INSERT INTO word_counts VALUES($1, $2, $3)")
     if err != nil {
         log.Fatalln(err)
     }
@@ -68,8 +72,9 @@ func insertRows(ctx context.Context, diff *lib.WordDiff) {
         log.Fatalln(err)
     }
 
+    t := time.Now().UnixMicro()
     diff.Walk(func (word string, count int) {
-        _, err = conn.Exec(ctx, "ps1", word, int16(count))
+        _, err = conn.Exec(ctx, "ps1", t, word, int16(count))
         if err != nil {
             log.Fatal(err)
         }
@@ -104,11 +109,14 @@ func dbWorker() {
         <-chunkUpdateChannel
 
         resp, err := http.Get("http://localhost:8080/api/chunks/last")
+        if err != nil {
+            log.Println(err)
+            return
+        }
         defer resp.Body.Close()
 
-        // this is really inefficient for our memory usage. Implementing an actual streaming protocol
-        // with just plaintext would be slower but require far less memory.
-        // It appears in AWS, RAM is more expensive than compute. At least for our purposes & t4g instances.
+        // this is fine for small packets (like chunks)
+        // but for the long-term diff it is inefficnet.
         decoder := gob.NewDecoder(resp.Body)
         diff := lib.NewWordDiff()
         err = decoder.Decode(&diff)
@@ -123,16 +131,11 @@ func dbWorker() {
     }
 }
 
-func main() {
-    go dbWorker()
-
-    // barebones code to stop this part of the code from DOSing the server when it goes offline
-    retryMaxWindow := 5 * 5000
-    maxRetries := 5
+func capRetries(retryMaxWindow, maxRetries int, fn func()) {
     lastDisconnect := time.Now().UnixMilli()
     disconnectCount := 0
     for {
-        subscribeToAPI()
+        fn()
         disconnectCount++
 
         if disconnectCount % maxRetries  == 0 {
@@ -141,5 +144,11 @@ func main() {
                 time.Sleep(3 * time.Second)
             }
         }
+        lastDisconnect = time.Now().UnixMilli()
     }
+}
+
+func main() {
+    go capRetries(5 * 5000, 5, dbWorker)
+    capRetries(5 * 5000, 5, subscribeToAPI)
 }
