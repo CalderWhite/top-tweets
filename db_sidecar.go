@@ -72,9 +72,9 @@ func insertRows(ctx context.Context, diff *lib.WordDiff) {
         log.Fatalln(err)
     }
 
-    t := time.Now().UnixMicro()
+    ts := time.Now()
     diff.Walk(func (word string, count int) {
-        _, err = conn.Exec(ctx, "ps1", t, word, int16(count))
+        _, err = conn.Exec(ctx, "ps1", ts, word, int16(count))
         if err != nil {
             log.Fatal(err)
         }
