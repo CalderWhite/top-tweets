@@ -6,7 +6,6 @@ import (
     "os"
 
 	"github.com/gin-gonic/gin"
-    "github.com/gin-gonic/autotls"
     "github.com/CalderWhite/top-tweets/lib"
 )
 
@@ -190,11 +189,11 @@ func main() {
 		c.File("build/index.html")
 	})
 
-    prod := os.Getenv("TOP_TWEETS_MODE") != "PRODUCTION"
+    prod := os.Getenv("TOP_TWEETS_MODE") == "PRODUCTION"
 	go tweetsWorker()
     if !prod {
 	    r.Run("0.0.0.0:8080")
     } else {
-        autotls.Run(r, "toptweets.calderwhite.com")
+        r.RunTLS("0.0.0.0:8080", "/etc/letsencrypt/live/toptweets.calderwhite.com/fullchain.pem", "/etc/letsencrypt/live/toptweets.calderwhite.com/privkey.pem")
     }
 }

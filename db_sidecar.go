@@ -9,6 +9,7 @@ import (
     "time"
     "context"
     "fmt"
+    "os"
 
     "github.com/jackc/pgx/v4"
 
@@ -33,10 +34,20 @@ const (
 
 var chunkUpdateChannel = make(chan int)
 var conn *pgx.Conn
+var production = os.Getenv("TOP_TWEETS_MODE") == "PRODUCTION"
+var apiUrl = getApiUrl()
+
+func getApiUrl() string {
+    if production {
+        return "https://toptweets.calderwhite.com:8080"
+    } else {
+        return "http://" + topTweetsHost + ":8080"
+    }
+}
 
 func subscribeToAPI() {
 	client := &http.Client{}
-    req_url := fmt.Sprintf("http://%s:8080/api/chunks/stream", topTweetsHost)
+    req_url := fmt.Sprintf("%s/api/chunks/stream", apiUrl)
     req, err := http.NewRequest("GET", req_url, nil)
     if err != nil {
         log.Println(err)
@@ -122,7 +133,7 @@ func dbWorker() {
     for {
         <-chunkUpdateChannel
 
-        req_url := fmt.Sprintf("http://%s:8080/api/chunks/last", topTweetsHost)
+        req_url := fmt.Sprintf("%s/api/chunks/last", apiUrl)
         resp, err := http.Get(req_url)
         if err != nil {
             log.Println(err)
