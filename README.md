@@ -11,6 +11,16 @@ Shows words that are in high use right now, while filtering out words that are a
 
 ## Building + Running
 
+```
+docker-compose build
+docker-compose up
+```
+
+
+## Development
+
+For debugging, any of the docker containers can be built and run individually.
+
 
 For the main service:
 ```
