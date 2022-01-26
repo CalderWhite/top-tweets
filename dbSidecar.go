@@ -4,27 +4,28 @@ import (
 	"bufio"
 	"io/ioutil"
 	"log"
-    "context"
 	"net/http"
     "encoding/gob"
+    "time"
+    "context"
 
     "github.com/jackc/pgx/v4"
-
 
     "github.com/CalderWhite/top-tweets/lib"
 )
 
-var chunkUpdateChannel = make(chan int)
-const (
-    host     = "localhost"
-    port     = 8812
-    user     = "admin"
-    password = "quest"
-    dbname   = "qdb"
-)
+/**
+ * A quick note on the schema: I would prefer the SYMBOL be stored with a 64-bit integer instead of 32-bit,
+ * however, I cannot change QuestDB's internals. At least, not without effort.
+ * If there were 1M new words per day, we would run out of indicies in the symbol table after 11 years.
+ * I am content with that. This essentially puts a maximum on the number of novel words per day we can encounter.
+ * TBD: How many new words we see per day.
+ * Note: If we upgraded our API to a 10% firehose from twitter, we would likely want to get into QuestDB's internals
+ *       and switch the index to 64-bit, OR do the symbol table ourselves.
+ */
 
+var chunkUpdateChannel = make(chan int)
 var conn *pgx.Conn
-var err error
 
 func subscribeToAPI() {
 	client := &http.Client{}
@@ -55,14 +56,45 @@ func subscribeToAPI() {
 	}
 }
 
+func insertRows(ctx context.Context, diff *lib.WordDiff) {
+    // Prepared statement given the name 'ps1'
+    _, err := conn.Prepare(ctx, "ps1", "INSERT INTO word_counts VALUES(now(), $1, $2)")
+    if err != nil {
+        log.Fatalln(err)
+    }
+    // Insert all rows in a single commit
+    tx, err := conn.Begin(ctx)
+    if err != nil {
+        log.Fatalln(err)
+    }
+
+    diff.Walk(func (word string, count int) {
+        _, err = conn.Exec(ctx, "ps1", word, int16(count))
+        if err != nil {
+            log.Fatal(err)
+        }
+    })
+
+    // Commit the transaction
+    err = tx.Commit(ctx)
+    if err != nil {
+        log.Fatalln(err)
+    }
+}
+
 func dbWorker() {
     ctx := context.Background()
-    conn, _ = pgx.Connect(ctx, "postgresql://admin:quest@localhost:8812/qdb")
+    var err error
+    conn, err = pgx.Connect(ctx, "postgresql://admin:quest@localhost:8812/qdb")
     defer conn.Close(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    _, err := conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS word_diffs_compressed(
+    _, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS word_counts(
         ts TIMESTAMP,
-        data BINARY
+        word SYMBOL,
+        count SHORT
     ) timestamp(ts)`)
     if err != nil {
         log.Fatal("Failed to create schema ", err)
@@ -74,6 +106,9 @@ func dbWorker() {
         resp, err := http.Get("http://localhost:8080/api/chunks/last")
         defer resp.Body.Close()
 
+        // this is really inefficient for our memory usage. Implementing an actual streaming protocol
+        // with just plaintext would be slower but require far less memory.
+        // It appears in AWS, RAM is more expensive than compute. At least for our purposes & t4g instances.
         decoder := gob.NewDecoder(resp.Body)
         diff := lib.NewWordDiff()
         err = decoder.Decode(&diff)
@@ -84,17 +119,27 @@ func dbWorker() {
         }
         resp.Body.Close()
 
-        _, err = conn.Exec(ctx, "INSERT INTO word_diffs_compressed VALUES(systimestamp(), $1)", diff.Serialize())
-        if err != nil {
-            log.Fatal(err)
-        }
-
+        insertRows(ctx, diff)
     }
 }
 
 func main() {
     go dbWorker()
+
+    // barebones code to stop this part of the code from DOSing the server when it goes offline
+    retryMaxWindow := 5 * 5000
+    maxRetries := 5
+    lastDisconnect := time.Now().UnixMilli()
+    disconnectCount := 0
     for {
         subscribeToAPI()
+        disconnectCount++
+
+        if disconnectCount % maxRetries  == 0 {
+            t2 := time.Now().UnixMilli()
+            if t2 - lastDisconnect < int64(retryMaxWindow) {
+                time.Sleep(3 * time.Second)
+            }
+        }
     }
 }
