@@ -98,7 +98,7 @@ func createBackup() {
 		FocusPeriod:      FOCUS_PERIOD,
 		Diffs:            wordDiffQueue.Public(),
 	}
-	gob.Register((wordDiffQueue.Last()).(*lib.WordDiff))
+	gob.Register((wordDiffQueue.Last()).(lib.WordDiff))
 
 	buffer := bytes.NewBuffer([]byte{})
 	encoder := gob.NewEncoder(buffer)
@@ -230,16 +230,16 @@ func processTweets(tweets <-chan StreamDataSchema) {
 		if globalTweetCount%int64(AGG_SIZE) == 0 {
 			if wordDiffQueue.IsFull() {
 				obj := wordDiffQueue.Dequeue()
-				oldestDiff, ok := obj.(*lib.WordDiff)
+				oldestDiff, ok := obj.(lib.WordDiff)
 				if !ok {
 					log.Printf("%T %v", obj, obj)
 					log.Println(wordDiffQueue.String())
 					log.Panic("Could not convert dequeued object to WordDiff.")
 				}
-				globalDiff.Sub(oldestDiff)
+				globalDiff.Sub(&oldestDiff)
 			}
 
-			wordDiffQueue.Enqueue(diff)
+			wordDiffQueue.Enqueue(*diff)
 			diff = lib.NewWordDiff()
 
 			// update the chunkUpdate channel
