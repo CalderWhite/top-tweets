@@ -137,9 +137,7 @@ func restoreFromBackup() {
     globalDiff = recovery.FocusDiff
     AGG_SIZE = recovery.AggSize
     FOCUS_PERIOD = recovery.FocusPeriod
-    log.Println(AGG_SIZE)
     wordDiffQueue.SetQueue(recovery.Diffs)
-    log.Println(wordDiffQueue.String())
 }
 
 func streamTweets(tweets chan<- StreamDataSchema) {
