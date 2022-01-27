@@ -74,6 +74,7 @@ type WordPair struct {
 type RecoveryPoint struct {
     GlobalTweetCount int64
     LongDiff *lib.WordDiff
+    FocusDiff *lib.WordDiff
     AggSize int
     FocusPeriod int
     Diffs *lib.CircularQueuePublic
@@ -93,11 +94,12 @@ func createBackup() {
     d := &RecoveryPoint{
         GlobalTweetCount: globalTweetCount,
         LongDiff: longGlobalDiff,
+        FocusDiff: globalDiff,
         AggSize: AGG_SIZE,
         FocusPeriod: FOCUS_PERIOD,
         Diffs: wordDiffQueue.Public(),
     }
-    gob.Register(*((wordDiffQueue.Last()).(*lib.WordDiff)))
+    gob.Register((wordDiffQueue.Last()).(*lib.WordDiff))
 
     buffer := bytes.NewBuffer([]byte{})
     encoder := gob.NewEncoder(buffer)
@@ -122,7 +124,7 @@ func restoreFromBackup() {
         return
     }
 
-    gob.Register(*lib.NewWordDiff())
+    gob.Register(lib.NewWordDiff())
     decoder := gob.NewDecoder(file)
     recovery := &RecoveryPoint{}
     err = decoder.Decode(&recovery)
@@ -132,9 +134,12 @@ func restoreFromBackup() {
 
     globalTweetCount = recovery.GlobalTweetCount
     longGlobalDiff = recovery.LongDiff
+    globalDiff = recovery.FocusDiff
     AGG_SIZE = recovery.AggSize
     FOCUS_PERIOD = recovery.FocusPeriod
+    log.Println(AGG_SIZE)
     wordDiffQueue.SetQueue(recovery.Diffs)
+    log.Println(wordDiffQueue.String())
 }
 
 func streamTweets(tweets chan<- StreamDataSchema) {
@@ -231,6 +236,7 @@ func processTweets(tweets <-chan StreamDataSchema) {
 				oldestDiff, ok := obj.(*lib.WordDiff)
 				if !ok {
                     log.Printf("%T %v", obj, obj)
+                    log.Println(wordDiffQueue.String())
 					log.Panic("Could not convert dequeued object to WordDiff.")
 				}
 				globalDiff.Sub(oldestDiff)

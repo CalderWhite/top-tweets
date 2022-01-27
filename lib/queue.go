@@ -71,8 +71,11 @@ func (q *CircularQueue) Last() interface{} {
 	if q.IsEmpty() {
 		return nil
 	}
-
-	return q.data[(q.tail-1)%q.capacity]
+    if q.tail == 0 {
+        return q.data[q.capacity - 1]
+    } else {
+	    return q.data[(q.tail-1)%q.capacity]
+    }
 }
 
 // String prints the queue
@@ -106,7 +109,7 @@ func (q *CircularQueue) Public() *CircularQueuePublic {
 func (q *CircularQueue) SetQueue(p *CircularQueuePublic) {
     q.capacity = p.Capacity
     for i, v := range p.Data {
-        q.data[i] = &v
+        q.data[i] = v
     }
     q.head = p.Head
     q.tail = p.Tail
