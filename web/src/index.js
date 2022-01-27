@@ -1,12 +1,11 @@
 import ReactDOM from "react-dom";
 import React, { useState, useEffect } from "react";
 import { Flipper, Flipped } from "react-flip-toolkit";
-import shuffle from "lodash.shuffle";
+// import shuffle from "lodash.shuffle";
 import "./styles.css";
 
 import Button from '@mui/material/Button';
 import Grid from "@mui/material/Grid";
-import Box from "@mui/material/Box";
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 
 function compareDecimals(a, b) {
