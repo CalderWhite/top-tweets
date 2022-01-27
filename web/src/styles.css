@@ -7,7 +7,7 @@ body {
   font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI",
     "Roboto", "Helvetica Neue", Arial, sans-serif;
 
-  background: #BBBBBB;
+  background: white;
 }
 
 .list {
@@ -15,11 +15,17 @@ body {
   display: flex;
 }
 
-.list > li {
-  margin-right: 1rem;
-}
-
 .list-item {
   display: block;
-  background: white;
+  padding: 20px;
+  margin: 15px;
+  border: 1px solid #1DA1F2;
+  border-radius: 25px;
+  background: #f2f5ff;
+  overflow: hidden;
+}
+
+.table-wrapper {
+  max-width: 1000px;
+  margin: auto
 }

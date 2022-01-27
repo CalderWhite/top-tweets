@@ -4,6 +4,11 @@ import { Flipper, Flipped } from "react-flip-toolkit";
 import shuffle from "lodash.shuffle";
 import "./styles.css";
 
+import Button from '@mui/material/Button';
+import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+
 function compareDecimals(a, b) {
   if (a.count === b.count) return 0;
 
@@ -44,19 +49,70 @@ const ListShuffler = () => {
 
   return (
     <div>
-      <p>Total Tweets: {totalTweets}</p>
+      <div className="table-wrapper">
+        <Grid container justifyContent="flex-end" >
+          <Grid item md={3}>
+            <p
+            style={{
+              margin: "15px",
+              textAlign: "left",
+              fontFamily: "Consolas, monaco, monospace",
+              fontSize: "14px",
+              background: "white",
+            }}
+          >
+            Total Tweets: {totalTweets.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+          </p>
+          </Grid>
+        </Grid>
+      </div>
       <div id="shuffle">
         <Flipper flipKey={lst2str(data)}>
-          <table>
+          <ul className="table-wrapper">
             {data.map(({count, word}) => (
               <Flipped key={word} flipId={word}>
-                <tr className="list-item card">
-                  <td>{count}</td>
-                  <td>{word}</td>
-                </tr>
+                <li className="list-item card">
+                  <Grid
+                    container
+                    justifyContent="space-between"
+                    alignItems="center"
+                    spacing={2}
+                  >
+                    <Grid item md={9} xs={6} overflow="hidden">
+                      <p
+                        style={{
+                          margin: 0,
+                          textOverflow: "ellipsis",
+                          overflow: "hidden",
+                          width: "100%"
+                        }}
+                      >
+                        {word}
+                      </p>
+                    </Grid>
+                    <Grid item md={3} xs={6}>
+                      <Grid container alignItems="center" justifyContent="flex-end" textAlign="right" spacing={2}>
+                        <Grid item md={8}>
+                         <p style={{margin: 0}}>{count}</p>
+                        </Grid>
+                        <Grid item md={4}>
+                          <Grid container justifyContent="center" alignItems="center">
+                            <Button
+                              variant="outlined"
+                              size="large"
+                              onClick={() => window.open('https://twitter.com/search?q=' + encodeURIComponent(word), '_')}
+                            >
+                              <ArrowForwardRoundedIcon />
+                            </Button>
+                          </Grid>
+                        </Grid>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                </li>
               </Flipped>
             ))}
-          </table>
+          </ul>
         </Flipper>
       </div>
     </div>

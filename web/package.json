@@ -5,13 +5,14 @@
   "keywords": [],
   "main": "src/index.js",
   "dependencies": {
-    "react": "16.8.x",
-    "react-dom": "16.8.x",
-    "react-scripts": "1.1.4",
+    "@emotion/react": "^11.7.1",
+    "@emotion/styled": "^11.6.0",
+    "@mui/icons-material": "^5.3.1",
+    "@mui/material": "^5.3.1",
+    "lodash.shuffle": "4.2.0",
     "react-flip-toolkit": "latest",
-    "lodash.shuffle": "4.2.0"
+    "react-scripts": "1.1.4"
   },
-  "devDependencies": {},
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
@@ -19,4 +20,3 @@
     "eject": "react-scripts eject"
   }
 }
-
