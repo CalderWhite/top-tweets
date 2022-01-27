@@ -1,12 +1,12 @@
 package main
 
 import (
+	"io"
+	"os"
 	"strconv"
-    "io"
-    "os"
 
+	"github.com/CalderWhite/top-tweets/lib"
 	"github.com/gin-gonic/gin"
-    "github.com/CalderWhite/top-tweets/lib"
 )
 
 /**
@@ -17,7 +17,7 @@ func main() {
 	r := gin.Default()
 	r.Static("/static", "./build/static")
 
-    api := r.Group("/api")
+	api := r.Group("/api")
 
 	/**
 	 * Gets the top [limit] words (default 100), adjusted by the longGlobalDiff.
@@ -177,23 +177,23 @@ func main() {
 		}
 	})
 
-    api.GET("/chunks/stream", func (c *gin.Context) {
-        c.Stream(func (w io.Writer) bool {
-            <-chunkUpdateChannel
-            w.Write([]byte("update\n"))
-            return true
-        })
-    })
+	api.GET("/chunks/stream", func(c *gin.Context) {
+		c.Stream(func(w io.Writer) bool {
+			<-chunkUpdateChannel
+			w.Write([]byte("update\n"))
+			return true
+		})
+	})
 
 	r.GET("/", func(c *gin.Context) {
 		c.File("build/index.html")
 	})
 
-    prod := os.Getenv("TOP_TWEETS_MODE") == "PRODUCTION"
+	prod := os.Getenv("TOP_TWEETS_MODE") == "PRODUCTION"
 	go tweetsWorker()
-    if !prod {
-	    r.Run("0.0.0.0:8080")
-    } else {
-        r.RunTLS("0.0.0.0:8080", "/etc/letsencrypt/live/toptweets.calderwhite.com/fullchain.pem", "/etc/letsencrypt/live/toptweets.calderwhite.com/privkey.pem")
-    }
+	if !prod {
+		r.Run("0.0.0.0:8080")
+	} else {
+		r.RunTLS("0.0.0.0:8080", "/etc/letsencrypt/live/toptweets.calderwhite.com/fullchain.pem", "/etc/letsencrypt/live/toptweets.calderwhite.com/privkey.pem")
+	}
 }

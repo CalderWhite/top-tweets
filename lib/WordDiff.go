@@ -1,10 +1,10 @@
 package lib
 
 import (
-    "encoding/gob"
-    "bytes"
+	"bytes"
+	"encoding/gob"
+	"log"
 	"sync"
-    "log"
 )
 
 type WordDiff struct {
@@ -102,22 +102,22 @@ func (w *WordDiff) Walk(walkFunc func(string, int)) {
 
 // Note: An INCLUSIVE minimum count
 func (w *WordDiff) Prune(minCount int) {
-    w.Walk(func (word string, count int) {
-        if count <= minCount {
-            delete(w.Words, word)
-        }
-    })
+	w.Walk(func(word string, count int) {
+		if count <= minCount {
+			delete(w.Words, word)
+		}
+	})
 }
 
 func (w *WordDiff) Serialize() []byte {
-    w.Lock()
-    defer w.Unlock()
-    buffer := bytes.NewBuffer([]byte{})
-    encoder := gob.NewEncoder(buffer)
-    err := encoder.Encode(w)
-    if err != nil {
-        log.Fatal(err)
-    }
+	w.Lock()
+	defer w.Unlock()
+	buffer := bytes.NewBuffer([]byte{})
+	encoder := gob.NewEncoder(buffer)
+	err := encoder.Encode(w)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    return buffer.Bytes()
+	return buffer.Bytes()
 }

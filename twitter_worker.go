@@ -2,10 +2,10 @@ package main
 
 import (
 	"bufio"
-    "bytes"
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
-    "encoding/gob"
-    "errors"
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -13,7 +13,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
-    "syscall"
+	"syscall"
 	"time"
 
 	"github.com/CalderWhite/top-tweets/lib"
@@ -67,17 +67,16 @@ type WordPair struct {
 	Count int    `json:"count"`
 }
 
-
 // we could use the database for this, but this gobbing this struct
 // reduces coupling and is also faster to ship.
 // if storing the long diff becomes too great of a burden, we can add db capabilities to reconstruct it.
 type RecoveryPoint struct {
-    GlobalTweetCount int64
-    LongDiff *lib.WordDiff
-    FocusDiff *lib.WordDiff
-    AggSize int
-    FocusPeriod int
-    Diffs *lib.CircularQueuePublic
+	GlobalTweetCount int64
+	LongDiff         *lib.WordDiff
+	FocusDiff        *lib.WordDiff
+	AggSize          int
+	FocusPeriod      int
+	Diffs            *lib.CircularQueuePublic
 }
 
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
@@ -87,57 +86,57 @@ var chunkUpdateChannel = make(chan int)
 var globalTweetCount int64
 
 func createBackup() {
-    longGlobalDiff.Lock()
-    defer longGlobalDiff.Unlock()
-    // we don't read from the individual members of the queue, so we can get away with
-    // not locking every single one of them
-    d := &RecoveryPoint{
-        GlobalTweetCount: globalTweetCount,
-        LongDiff: longGlobalDiff,
-        FocusDiff: globalDiff,
-        AggSize: AGG_SIZE,
-        FocusPeriod: FOCUS_PERIOD,
-        Diffs: wordDiffQueue.Public(),
-    }
-    gob.Register((wordDiffQueue.Last()).(*lib.WordDiff))
+	longGlobalDiff.Lock()
+	defer longGlobalDiff.Unlock()
+	// we don't read from the individual members of the queue, so we can get away with
+	// not locking every single one of them
+	d := &RecoveryPoint{
+		GlobalTweetCount: globalTweetCount,
+		LongDiff:         longGlobalDiff,
+		FocusDiff:        globalDiff,
+		AggSize:          AGG_SIZE,
+		FocusPeriod:      FOCUS_PERIOD,
+		Diffs:            wordDiffQueue.Public(),
+	}
+	gob.Register((wordDiffQueue.Last()).(*lib.WordDiff))
 
-    buffer := bytes.NewBuffer([]byte{})
-    encoder := gob.NewEncoder(buffer)
-    err := encoder.Encode(d)
-    if err != nil {
-        log.Fatal(err)
-    }
+	buffer := bytes.NewBuffer([]byte{})
+	encoder := gob.NewEncoder(buffer)
+	err := encoder.Encode(d)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    err = os.WriteFile(recoveryFileName, buffer.Bytes(), 0644)
-    if err != nil {
-        log.Fatal(err)
-    }
+	err = os.WriteFile(recoveryFileName, buffer.Bytes(), 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func restoreFromBackup() {
-    longGlobalDiff.Lock()
-    defer longGlobalDiff.Unlock()
-    file, err := os.Open(recoveryFileName)
-    if err != nil {
-        log.Println("Could not open recovery file due to: ", err)
-        log.Println("Starting without recovery...")
-        return
-    }
+	longGlobalDiff.Lock()
+	defer longGlobalDiff.Unlock()
+	file, err := os.Open(recoveryFileName)
+	if err != nil {
+		log.Println("Could not open recovery file due to: ", err)
+		log.Println("Starting without recovery...")
+		return
+	}
 
-    gob.Register(lib.NewWordDiff())
-    decoder := gob.NewDecoder(file)
-    recovery := &RecoveryPoint{}
-    err = decoder.Decode(&recovery)
-    if err != nil {
-        log.Fatal(err)
-    }
+	gob.Register(lib.NewWordDiff())
+	decoder := gob.NewDecoder(file)
+	recovery := &RecoveryPoint{}
+	err = decoder.Decode(&recovery)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    globalTweetCount = recovery.GlobalTweetCount
-    longGlobalDiff = recovery.LongDiff
-    globalDiff = recovery.FocusDiff
-    AGG_SIZE = recovery.AggSize
-    FOCUS_PERIOD = recovery.FocusPeriod
-    wordDiffQueue.SetQueue(recovery.Diffs)
+	globalTweetCount = recovery.GlobalTweetCount
+	longGlobalDiff = recovery.LongDiff
+	globalDiff = recovery.FocusDiff
+	AGG_SIZE = recovery.AggSize
+	FOCUS_PERIOD = recovery.FocusPeriod
+	wordDiffQueue.SetQueue(recovery.Diffs)
 }
 
 func streamTweets(tweets chan<- StreamDataSchema) {
@@ -167,8 +166,8 @@ func streamTweets(tweets chan<- StreamDataSchema) {
 			if err == io.EOF {
 				break
 			} else if errors.Is(err, syscall.ECONNRESET) {
-                break
-            } else {
+				break
+			} else {
 				continue
 			}
 		}
@@ -221,20 +220,20 @@ func processTweets(tweets <-chan StreamDataSchema) {
 		}
 
 		if globalTweetCount%int64(PRUNE_PERIOD) == 0 {
-            globalDiff.Prune(0)
-            longGlobalDiff.Prune(1)
+			globalDiff.Prune(0)
+			longGlobalDiff.Prune(1)
 
-            // right after pruning, store the backup
-            createBackup()
-        }
+			// right after pruning, store the backup
+			createBackup()
+		}
 
 		if globalTweetCount%int64(AGG_SIZE) == 0 {
 			if wordDiffQueue.IsFull() {
-                obj := wordDiffQueue.Dequeue()
+				obj := wordDiffQueue.Dequeue()
 				oldestDiff, ok := obj.(*lib.WordDiff)
 				if !ok {
-                    log.Printf("%T %v", obj, obj)
-                    log.Println(wordDiffQueue.String())
+					log.Printf("%T %v", obj, obj)
+					log.Println(wordDiffQueue.String())
 					log.Panic("Could not convert dequeued object to WordDiff.")
 				}
 				globalDiff.Sub(oldestDiff)
@@ -243,19 +242,19 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			wordDiffQueue.Enqueue(diff)
 			diff = lib.NewWordDiff()
 
-            // update the chunkUpdate channel
-            select {
-            case chunkUpdateChannel <- 0:
-            default:
-                // message was not recieved, carry on.
-            }
+			// update the chunkUpdate channel
+			select {
+			case chunkUpdateChannel <- 0:
+			default:
+				// message was not recieved, carry on.
+			}
 		}
 	}
 }
 
 func tweetsWorker() {
-    // this may fail, in which case we just start all of the values from empty (and zero)
-    restoreFromBackup()
+	// this may fail, in which case we just start all of the values from empty (and zero)
+	restoreFromBackup()
 
 	tweets := make(chan StreamDataSchema)
 	go processTweets(tweets)
