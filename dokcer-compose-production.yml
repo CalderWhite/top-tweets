@@ -1,0 +1,34 @@
+version: "3"
+
+services:
+  questdb:
+    image: questdb/questdb
+    ports:
+      - "9000:9000"
+      - "9009:9009"
+      - "8812:8812"
+      - "9003:9003"
+    volumes:
+      - type: bind
+        source: ./db
+        target: /root/.questdb
+  top_tweets:
+    image: calderwhite/top-tweets
+    restart: always
+    ports:
+      - "443:8080"
+    hostname: toptweets.calderwhite.com
+    environment:
+      - TWITTER_BEARER
+      - TOP_TWEETS_MODE=PRODUCTION
+    volumes:
+      - type: bind
+        source: ./backups
+        target: /app/backups
+      - type: bind
+        source: /etc/letsencrypt
+        target: /etc/letsencrypt
+  db_sidecar:
+    image: calderwhite/db-sidecar
+    environment:
+      - TOP_TWEETS_MODE=PRODUCTION
