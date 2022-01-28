@@ -123,7 +123,8 @@ func restoreFromBackup() {
 		return
 	}
 
-	gob.Register(lib.NewWordDiff())
+	dummy := lib.NewWordDiff()
+	gob.Register(*dummy)
 	decoder := gob.NewDecoder(file)
 	recovery := &RecoveryPoint{}
 	err = decoder.Decode(&recovery)

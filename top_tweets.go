@@ -165,7 +165,7 @@ func main() {
 	})
 
 	api.GET("/chunks/last", func(c *gin.Context) {
-		diff, ok := wordDiffQueue.Last().(*lib.WordDiff)
+		diff, ok := wordDiffQueue.Last().(lib.WordDiff)
 		if ok {
 			c.Data(200, "application", diff.Serialize())
 		} else {
