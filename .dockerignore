@@ -1,3 +1,5 @@
 pkg
 web/node_modules
 ./db
+./timescale-db
+./timescaledb-data
