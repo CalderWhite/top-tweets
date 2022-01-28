@@ -13,3 +13,4 @@ dbSidecar
 db
 backups
 backups/*
+.DS_Store
