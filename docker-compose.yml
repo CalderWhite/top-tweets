@@ -1,17 +1,16 @@
 version: "3"
 
 services:
-  questdb:
-    image: questdb/questdb
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
     ports:
-      - "9000:9000"
-      - "9009:9009"
-      - "8812:8812"
-      - "9003:9003"
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=password
     volumes:
       - type: bind
-        source: ./db
-        target: /root/.questdb
+        source: ./timescaledb-data
+        target: /var/lib/postgresql/data
   top_tweets:
     build: .
     image: calderwhite/top-tweets

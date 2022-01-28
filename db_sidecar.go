@@ -28,7 +28,7 @@ import (
 
 // when run outside of docker-compose, these can both be set to "localhost"
 const (
-	questDbHost   = "questdb"
+	questDbHost   = "localhost"
 	topTweetsHost = "top_tweets"
 )
 
@@ -41,7 +41,14 @@ func getApiUrl() string {
 	if production {
 		return "https://toptweets.calderwhite.com:8080"
 	} else {
-		return "http://" + topTweetsHost + ":8080"
+		//return "http://" + topTweetsHost + ":8080"
+		return "https://toptweets.calderwhite.com"
+	}
+}
+
+func checkError(err error) {
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -80,6 +87,7 @@ func subscribeToAPI() {
 }
 
 func insertRows(ctx context.Context, diff *lib.WordDiff) {
+	log.Println("Inserting...")
 	// Prepared statement given the name 'ps1'
 	_, err := conn.Prepare(ctx, "ps1", "INSERT INTO word_counts VALUES($1, $2, $3)")
 	if err != nil {
@@ -112,7 +120,7 @@ func insertRows(ctx context.Context, diff *lib.WordDiff) {
 func dbWorker() {
 	ctx := context.Background()
 	var err error
-	conn_url := fmt.Sprintf("postgresql://admin:quest@%s:8812/qdb", questDbHost)
+	conn_url := fmt.Sprintf("postgres://postgres:password@%s:5432/postgres", questDbHost)
 	conn, err = pgx.Connect(ctx, conn_url)
 	if err != nil {
 		log.Println(err)
@@ -121,14 +129,24 @@ func dbWorker() {
 	defer conn.Close(ctx)
 
 	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS word_counts(
-        ts TIMESTAMP,
-        word SYMBOL,
-        count SHORT
-    ) timestamp(ts)`)
+        ts TIMESTAMP NOT NULL,
+        word TEXT NOT NULL,
+        count SMALLINT NOT NULL
+    )`)
 	if err != nil {
 		log.Println("Failed to create schema ", err)
 		return
 	}
+
+	_, err = conn.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS timescaledb;`)
+	checkError(err)
+	_, err = conn.Exec(ctx, `SELECT create_hypertable(
+		'word_counts',
+		'ts',
+		chunk_time_interval => INTERVAL '10 minute',
+		if_not_exists => True
+	)`)
+	checkError(err)
 
 	for {
 		<-chunkUpdateChannel
