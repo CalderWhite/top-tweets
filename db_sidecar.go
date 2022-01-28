@@ -28,7 +28,7 @@ import (
 
 // when run outside of docker-compose, these can both be set to "localhost"
 const (
-	questDbHost   = "localhost"
+	questDbHost   = "timescaledb"
 	topTweetsHost = "top_tweets"
 )
 
@@ -143,9 +143,17 @@ func dbWorker() {
 	_, err = conn.Exec(ctx, `SELECT create_hypertable(
 		'word_counts',
 		'ts',
-		chunk_time_interval => INTERVAL '10 minute',
+		chunk_time_interval => INTERVAL '1 hour',
 		if_not_exists => True
 	)`)
+	checkError(err)
+	_, err = conn.Exec(ctx, `ALTER TABLE word_counts SET (
+		timescaledb.compress,
+		timescaledb.compress_segmentby = 'ts'	
+	)`)
+	checkError(err)
+	// compress data older than 1 hour
+	_, err = conn.Exec(ctx, `SELECT add_compression_policy('word_counts', INTERVAL '1 hour')`)
 	checkError(err)
 
 	for {
