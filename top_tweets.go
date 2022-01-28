@@ -185,6 +185,10 @@ func main() {
 		})
 	})
 
+	r.GET("/favicon.ico", func(c *gin.Context) {
+		c.File("build/favicon.ico")
+	})
+
 	r.GET("/", func(c *gin.Context) {
 		c.File("build/index.html")
 	})
