@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"log"
 	"os"
 	"strconv"
 
@@ -55,10 +54,6 @@ func main() {
 		// reverse words so highest is first.
 		for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
 			words[i], words[j] = words[j], words[i]
-		}
-
-		if len(words) > 0 {
-			log.Println("/api/top", words[0])
 		}
 
 		c.JSON(200, gin.H{

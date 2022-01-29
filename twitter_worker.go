@@ -337,10 +337,6 @@ func getTop(topAmount int) []WordPair {
 		}
 	})
 
-	if len(top) > 0 {
-		log.Println(top[len(top)-1])
-	}
-
 	if foundNonZero {
 		// this usually doesn't happen because there are so many words with 1, but in the odd event that there isn't
 		// we don't want to return zeros because they mess up the UI. Lol.
