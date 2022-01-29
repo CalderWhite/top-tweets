@@ -68,7 +68,7 @@ const ListShuffler = () => {
       <div id="shuffle">
         <Flipper flipKey={lst2str(data)}>
           <ul className="table-wrapper">
-            {data.map(({count, word}) => (
+            {data.map(({multiple, count, word}) => (
               <Flipped key={word} flipId={word}>
                 <li className="list-item card">
                   <Grid
@@ -77,7 +77,7 @@ const ListShuffler = () => {
                     alignItems="center"
                     spacing={2}
                   >
-                    <Grid item md={9} xs={6} overflow="hidden">
+                    <Grid item md={6} xs={6} overflow="hidden">
                       <p
                         style={{
                           margin: 0,
@@ -89,9 +89,12 @@ const ListShuffler = () => {
                         {word}
                       </p>
                     </Grid>
-                    <Grid item md={3} xs={6}>
+                    <Grid item md={6} xs={6}>
                       <Grid container alignItems="center" justifyContent="flex-end" textAlign="right" spacing={2}>
-                        <Grid item md={8}>
+                      <Grid item md={4} textAlign="left">
+                         <p style={{margin: 0}}>{Math.round(multiple * 100) / 100}</p>
+                        </Grid>
+                        <Grid item md={4}>
                          <p style={{margin: 0}}>{count}</p>
                         </Grid>
                         <Grid item md={4}>

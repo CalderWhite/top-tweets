@@ -42,10 +42,10 @@ func main() {
 			}
 		}
 
-		var words []WordPair
+		var words []WordRankingPair
 		if limit == 100 {
 			topCacheMu.Lock()
-			words = make([]WordPair, len(topCache))
+			words = make([]WordRankingPair, len(topCache))
 			copy(words, topCache)
 			topCacheMu.Unlock()
 		} else {
@@ -129,11 +129,18 @@ func main() {
 		q := c.Request.URL.Query()
 		period, periodFound := q["period"]
 
-		var count interface{}
 		if !periodFound || period[0] == "focus" {
-			count = globalDiff.Get(c.Param("word"))
+			count := globalDiff.Get(c.Param("word"))
+			c.JSON(200, WordPair{
+				Word:  c.Param("word"),
+				Count: count,
+			})
 		} else if period[0] == "long" {
-			count = longGlobalDiff.Get(c.Param("word"))
+			count := longGlobalDiff.Get(c.Param("word"))
+			c.JSON(200, WordPair{
+				Word:  c.Param("word"),
+				Count: count,
+			})
 		} else {
 			c.JSON(400, gin.H{
 				"status":  "error",
@@ -142,11 +149,6 @@ func main() {
 			})
 			return
 		}
-
-		c.JSON(200, gin.H{
-			"word":  c.Param("word"),
-			"count": count,
-		})
 	})
 
 	/*

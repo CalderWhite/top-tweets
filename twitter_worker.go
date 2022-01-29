@@ -52,6 +52,10 @@ var FOCUS_PERIOD int = 300
 // the globalTweetCount
 const PRUNE_PERIOD int = 10000
 
+// not sure what to base this number off. Maybe the average use of all words for all time
+const minTopCount int = 100
+const minTopMultiple float32 = 1.5
+
 const recoveryFileName = "backups/top_tweets_recovery.dat"
 
 type StreamDataSchema struct {
@@ -66,6 +70,12 @@ type StreamDataSchema struct {
 type WordPair struct {
 	Word  string `json:"word"`
 	Count int    `json:"count"`
+}
+
+type WordRankingPair struct {
+	Word     string  `json:"word"`
+	Count    int     `json:"count"`
+	Multiple float32 `json:"multiple"`
 }
 
 // we could use the database for this, but this gobbing this struct
@@ -85,7 +95,7 @@ var globalDiff *lib.WordDiff = lib.NewWordDiff()
 var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
 var chunkUpdateChannel = make(chan int)
 var globalTweetCount int64
-var topCache []WordPair = make([]WordPair, 100)
+var topCache []WordRankingPair = make([]WordRankingPair, 100)
 var topCacheMu sync.Mutex
 
 func createBackup() {
@@ -290,10 +300,12 @@ func tweetsWorker() {
 	}
 }
 
-func getTop(topAmount int) []WordPair {
-	top := make([]WordPair, topAmount)
-	if globalTweetCount/int64((FOCUS_PERIOD*AGG_SIZE)) == 0 {
-		return make([]WordPair, 0)
+func getTop(topAmount int) []WordRankingPair {
+	// transformation multiple to make a long term count into a focus period count
+	adjustmentRatio := globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)
+	top := make([]WordRankingPair, topAmount)
+	if adjustmentRatio == 0 {
+		return make([]WordRankingPair, 0)
 	}
 
 	foundNonZero := false
@@ -304,6 +316,7 @@ func getTop(topAmount int) []WordPair {
 	defer longGlobalDiff.Unlock()
 	globalDiff.WalkUnlocked(func(word string, count int) {
 		longCount := int64(longGlobalDiff.GetUnlocked(word))
+		// essentially 0, since we divide by the adjustmentRatio
 		if longCount == 0 {
 			return
 		}
@@ -312,9 +325,16 @@ func getTop(topAmount int) []WordPair {
 		// In theory, this method should return higher counts for words that are being used more than average.
 		// (LONG_PERIOD / FOCUS_PERIOD) = the factor FOCUS_PERIOD is multiplied by for the LONG_PERIOD
 		// then we divide the long count by that factor to make it the average usage over the past LONG_PERIOD
-		count -= int(longCount / (globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)))
+		//count -= int(longCount / (globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)))
 
-		if count > 0 && count > top[0].Count {
+		var multiple float32
+		if longCount < adjustmentRatio {
+			multiple = minTopMultiple + 1
+		} else {
+			multiple = float32(count) / float32(longCount/adjustmentRatio)
+		}
+		count -= int(longCount / adjustmentRatio)
+		if count > 0 && count > top[0].Count && multiple > minTopMultiple {
 			foundNonZero = true
 			for i := 0; i < len(top); i++ {
 				if count <= top[i].Count {
@@ -324,13 +344,13 @@ func getTop(topAmount int) []WordPair {
 					// shift all those less than <count> back 1
 					copy(top[:i], top[1:i+1])
 					// overwrite the current element
-					top[i] = WordPair{Word: word, Count: count}
+					top[i] = WordRankingPair{Word: word, Count: count, Multiple: multiple}
 					break
 				} else if i == len(top)-1 {
 					// shift all those less than <count> back 1
 					copy(top[:i], top[1:i+1])
 					// overwrite the current element
-					top[i] = WordPair{Word: word, Count: count}
+					top[i] = WordRankingPair{Word: word, Count: count, Multiple: multiple}
 					break
 				}
 			}
@@ -348,6 +368,6 @@ func getTop(topAmount int) []WordPair {
 		}
 		return top
 	} else {
-		return make([]WordPair, 0)
+		return make([]WordRankingPair, 0)
 	}
 }
