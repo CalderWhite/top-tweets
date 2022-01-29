@@ -13,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -84,6 +85,8 @@ var globalDiff *lib.WordDiff = lib.NewWordDiff()
 var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
 var chunkUpdateChannel = make(chan int)
 var globalTweetCount int64
+var topCache []WordPair = make([]WordPair, 100)
+var topCacheMu sync.Mutex
 
 func createBackup() {
 	longGlobalDiff.Lock()
@@ -253,12 +256,31 @@ func processTweets(tweets <-chan StreamDataSchema) {
 	}
 }
 
+func getTopWorker() {
+	var targetPeriod int64 = 1000
+	for {
+		t1 := time.Now().UnixMilli()
+		top := getTop(100)
+		t2 := time.Now().UnixMilli()
+		topCacheMu.Lock()
+		copy(topCache, top)
+		topCacheMu.Unlock()
+		log.Printf("getTop(): %dms\n", (t2 - t1))
+		time.Sleep(time.Duration(targetPeriod-(t2-t1)) * time.Millisecond)
+	}
+}
+
 func tweetsWorker() {
 	// this may fail, in which case we just start all of the values from empty (and zero)
 	restoreFromBackup()
 
 	tweets := make(chan StreamDataSchema)
 	go processTweets(tweets)
+
+	// this adds idle load to the server but reduces latency massively by caching results.
+	// (even if caching was done in a legit way, the user who hits a stale cache entry would have to wait for the new value
+	//  to be produced by the getTop() query. This way there is minimal latency for all users).
+	go getTopWorker()
 
 	// As per the twitter API documentation, the stream can die at times.
 	// So, we must restart the stream when it breaks.
@@ -314,11 +336,16 @@ func getTop(topAmount int) []WordPair {
 		}
 	})
 
+	if len(top) > 0 {
+		log.Println(top[len(top)-1])
+	}
+
 	if foundNonZero {
 		// this usually doesn't happen because there are so many words with 1, but in the odd event that there isn't
 		// we don't want to return zeros because they mess up the UI. Lol.
 		for i, v := range top {
 			if v.Count == 0 {
+				log.Println("Found 0, returning truncation")
 				return top[i+1:]
 			}
 		}

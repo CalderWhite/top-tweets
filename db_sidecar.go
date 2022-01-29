@@ -153,7 +153,7 @@ func dbWorker() {
 	)`)
 	checkError(err)
 	// compress data older than 1 hour
-	_, err = conn.Exec(ctx, `SELECT add_compression_policy('word_counts', INTERVAL '1 hour')`)
+	_, err = conn.Exec(ctx, `SELECT add_compression_policy('word_counts', INTERVAL '1 second', if_not_exists => True)`)
 	checkError(err)
 
 	for {

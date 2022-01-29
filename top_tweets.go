@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"log"
 	"os"
 	"strconv"
 
@@ -42,11 +43,23 @@ func main() {
 			}
 		}
 
-		words := getTop(limit)
+		var words []WordPair
+		if limit == 100 {
+			topCacheMu.Lock()
+			words = topCache
+			topCacheMu.Unlock()
+		} else {
+			words = getTop(limit)
+		}
 		// reverse words so highest is first.
 		for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
 			words[i], words[j] = words[j], words[i]
 		}
+
+		if len(words) > 0 {
+			log.Println("/api/top", words[0])
+		}
+
 		c.JSON(200, gin.H{
 			"words": words,
 			"total": globalTweetCount,
