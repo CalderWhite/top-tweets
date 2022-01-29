@@ -260,11 +260,12 @@ func getTopWorker() {
 	var targetPeriod int64 = 1000
 	for {
 		t1 := time.Now().UnixMilli()
-		top := getTop(100)
-		t2 := time.Now().UnixMilli()
+
 		topCacheMu.Lock()
-		copy(topCache, top)
+		topCache = getTop(100)
 		topCacheMu.Unlock()
+
+		t2 := time.Now().UnixMilli()
 		log.Printf("getTop(): %dms\n", (t2 - t1))
 		time.Sleep(time.Duration(targetPeriod-(t2-t1)) * time.Millisecond)
 	}
