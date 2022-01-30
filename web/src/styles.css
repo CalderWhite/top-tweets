@@ -29,3 +29,8 @@ body {
   max-width: 1000px;
   margin: auto
 }
+
+.stats-p {
+  font-size: 1.6rem;
+  margin: 0;
+}

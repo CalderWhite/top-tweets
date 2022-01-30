@@ -50,11 +50,20 @@ var FOCUS_PERIOD int = 300
 // after this many tweets, we will prune all (1) counts in longGlobalDiff, and (0) counts in globalDiff
 // 0 counts have literally no impact, and 1 counts have an infinitesimal impact on the longGlobalDiff when divided by
 // the globalTweetCount
-const PRUNE_PERIOD int = 10000
+// we use 36k because we get a min of 40 tweets/second, which means this will prune every ~15 minutes
+// this means more memory usage, but also more accurate long term averages since it will pick up less frequent words
+const longPrunePeriod int = 360000
 
-// not sure what to base this number off. Maybe the average use of all words for all time
-const minTopCount int = 100
-const minTopMultiple float32 = 1.5
+// we can have a shorter prune period for the short term pruning since it just prunes 0s
+const focusPrunePeriod int = 10000
+
+// not sure what to base this number off. Maybe use things like all time std dev, etc.
+const (
+	minMultiple      float32 = 2
+	maxMultiple      float32 = 15
+	minCount         float32 = 100
+	maxAdjustedCount float32 = 2000
+)
 
 const recoveryFileName = "backups/top_tweets_recovery.dat"
 
@@ -73,9 +82,10 @@ type WordPair struct {
 }
 
 type WordRankingPair struct {
-	Word     string  `json:"word"`
-	Count    int     `json:"count"`
-	Multiple float32 `json:"multiple"`
+	Word      string  `json:"word"`
+	Count     int     `json:"count"`
+	Multiple  float32 `json:"multiple"`
+	WordScore float32 `json:"wordScore"`
 }
 
 // we could use the database for this, but this gobbing this struct
@@ -233,8 +243,10 @@ func processTweets(tweets <-chan StreamDataSchema) {
 			}
 		}
 
-		if globalTweetCount%int64(PRUNE_PERIOD) == 0 {
+		if globalTweetCount%int64(focusPrunePeriod) == 0 {
 			globalDiff.Prune(0)
+		}
+		if globalTweetCount%int64(longPrunePeriod) == 0 {
 			longGlobalDiff.Prune(1)
 
 			// right after pruning, store the backup
@@ -300,6 +312,13 @@ func tweetsWorker() {
 	}
 }
 
+func min(a, b float32) float32 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func getTop(topAmount int) []WordRankingPair {
 	// transformation multiple to make a long term count into a focus period count
 	adjustmentRatio := globalTweetCount / int64(FOCUS_PERIOD*AGG_SIZE)
@@ -314,6 +333,19 @@ func getTop(topAmount int) []WordRankingPair {
 	longGlobalDiff.Lock()
 	defer globalDiff.Unlock()
 	defer longGlobalDiff.Unlock()
+	// maxAdjustedCount := 0
+	// globalDiff.WalkUnlocked(func(word string, count int) {
+	// 	longCount := int64(longGlobalDiff.GetUnlocked(word))
+	// 	// essentially 0, since we divide by the adjustmentRatio
+	// 	if longCount == 0 {
+	// 		return
+	// 	}
+	// 	adjustedCount := count - int(longCount/adjustmentRatio)
+	// 	if adjustedCount > maxAdjustedCount {
+	// 		maxAdjustedCount = adjustedCount
+	// 	}
+	// })
+
 	globalDiff.WalkUnlocked(func(word string, count int) {
 		longCount := int64(longGlobalDiff.GetUnlocked(word))
 		// essentially 0, since we divide by the adjustmentRatio
@@ -329,28 +361,33 @@ func getTop(topAmount int) []WordRankingPair {
 
 		var multiple float32
 		if longCount < adjustmentRatio {
-			multiple = minTopMultiple + 1
+			multiple = maxMultiple
 		} else {
 			multiple = float32(count) / float32(longCount/adjustmentRatio)
 		}
-		count -= int(longCount / adjustmentRatio)
-		if count > 0 && count > top[0].Count && multiple > minTopMultiple {
+
+		adjustedCount := count - int(longCount/adjustmentRatio)
+		// secret sauce formula. maybe change some of these values to be more empirical and based on statistics.
+		wordScore := (min(multiple-minMultiple, maxMultiple)/maxMultiple)*0.4 +
+			min(float32(adjustedCount)-minCount, maxAdjustedCount)/maxAdjustedCount*0.6
+
+		if adjustedCount > int(minCount) && multiple > minMultiple && wordScore > top[0].WordScore {
 			foundNonZero = true
 			for i := 0; i < len(top); i++ {
-				if count <= top[i].Count {
+				if wordScore <= top[i].WordScore {
 					// subtract one since the previous index is the one we are greater than
 					i -= 1
 
 					// shift all those less than <count> back 1
 					copy(top[:i], top[1:i+1])
 					// overwrite the current element
-					top[i] = WordRankingPair{Word: word, Count: count, Multiple: multiple}
+					top[i] = WordRankingPair{Word: word, Count: adjustedCount, Multiple: multiple, WordScore: wordScore}
 					break
 				} else if i == len(top)-1 {
 					// shift all those less than <count> back 1
 					copy(top[:i], top[1:i+1])
 					// overwrite the current element
-					top[i] = WordRankingPair{Word: word, Count: count, Multiple: multiple}
+					top[i] = WordRankingPair{Word: word, Count: adjustedCount, Multiple: multiple, WordScore: wordScore}
 					break
 				}
 			}
@@ -360,13 +397,13 @@ func getTop(topAmount int) []WordRankingPair {
 	if foundNonZero {
 		// this usually doesn't happen because there are so many words with 1, but in the odd event that there isn't
 		// we don't want to return zeros because they mess up the UI. Lol.
+		lastZero := 0
 		for i, v := range top {
 			if v.Count == 0 {
-				log.Println("Found 0, returning truncation")
-				return top[i+1:]
+				lastZero = i
 			}
 		}
-		return top
+		return top[lastZero+1:]
 	} else {
 		return make([]WordRankingPair, 0)
 	}

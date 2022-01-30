@@ -68,7 +68,7 @@ const ListShuffler = () => {
       <div id="shuffle">
         <Flipper flipKey={lst2str(data)}>
           <ul className="table-wrapper">
-            {data.map(({multiple, count, word}) => (
+            {data.map(({wordScore, multiple, count, word}) => (
               <Flipped key={word} flipId={word}>
                 <li className="list-item card">
                   <Grid
@@ -77,7 +77,7 @@ const ListShuffler = () => {
                     alignItems="center"
                     spacing={2}
                   >
-                    <Grid item md={6} xs={6} overflow="hidden">
+                    <Grid item md={6} xs={4} overflow="hidden">
                       <p
                         style={{
                           margin: 0,
@@ -89,15 +89,18 @@ const ListShuffler = () => {
                         {word}
                       </p>
                     </Grid>
-                    <Grid item md={6} xs={6}>
+                    <Grid item md={6} xs={8}>
                       <Grid container alignItems="center" justifyContent="flex-end" textAlign="right" spacing={2}>
-                      <Grid item md={4} textAlign="left">
-                         <p style={{margin: 0}}>{Math.round(multiple * 100) / 100}</p>
+                        <Grid item md={5}>
+                            <p className="stats-p">{Math.round(wordScore * 1000) / 1000}</p>
                         </Grid>
-                        <Grid item md={4}>
-                         <p style={{margin: 0}}>{count}</p>
+                        <Grid item md={2}>
+                          <p className="stats-p">{Math.round(multiple * 100) / 100}</p>
                         </Grid>
-                        <Grid item md={4}>
+                        <Grid item md={2}>
+                          <p className="stats-p">{count}</p>
+                        </Grid>
+                        <Grid item md={3}>
                           <Grid container justifyContent="center" alignItems="center">
                             <Button
                               variant="outlined"
