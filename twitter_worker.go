@@ -13,7 +13,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -106,7 +105,6 @@ var longGlobalDiff *lib.WordDiff = lib.NewWordDiff()
 var chunkUpdateChannel = make(chan int)
 var globalTweetCount int64
 var topCache []WordRankingPair = make([]WordRankingPair, 100)
-var topCacheMu sync.Mutex
 
 func createBackup() {
 	longGlobalDiff.Lock()
@@ -283,9 +281,7 @@ func getTopWorker() {
 	for {
 		t1 := time.Now().UnixMilli()
 
-		topCacheMu.Lock()
 		topCache = getTop(100)
-		topCacheMu.Unlock()
 
 		t2 := time.Now().UnixMilli()
 		log.Printf("getTop(): %dms\n", (t2 - t1))
@@ -347,6 +343,11 @@ func getTop(topAmount int) []WordRankingPair {
 	// })
 
 	globalDiff.WalkUnlocked(func(word string, count int) {
+		// if the count is already below the minCount, don't bother
+		if count < int(minCount) {
+			return
+		}
+
 		longCount := int64(longGlobalDiff.GetUnlocked(word))
 		// essentially 0, since we divide by the adjustmentRatio
 		if longCount == 0 {

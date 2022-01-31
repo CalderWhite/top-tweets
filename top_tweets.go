@@ -44,10 +44,8 @@ func main() {
 
 		var words []WordRankingPair
 		if limit == 100 {
-			topCacheMu.Lock()
 			words = make([]WordRankingPair, len(topCache))
 			copy(words, topCache)
-			topCacheMu.Unlock()
 		} else {
 			words = getTop(limit)
 		}
