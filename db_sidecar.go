@@ -27,9 +27,11 @@ import (
  */
 
 // when run outside of docker-compose, these can both be set to "localhost"
+// every 10k (2 hours) chunks, download and update the long-term counts
 const (
-	questDbHost   = "timescaledb"
-	topTweetsHost = "top_tweets"
+	questDbHost       = "timescaledb"
+	topTweetsHost     = "top_tweets"
+	chunkUpdatePeriod = 1000
 )
 
 var chunkUpdateChannel = make(chan int)
@@ -118,6 +120,72 @@ func insertRows(ctx context.Context, diff *lib.WordDiff) {
 	}
 }
 
+func insertRowsLong(ctx context.Context, diff *lib.WordDiff) {
+	log.Println("Inserting...")
+	// Prepared statement given the name 'ps1'
+	_, err := conn.Prepare(ctx, "ps2", "INSERT INTO long_word_counts VALUES($1, $2) ON CONFLICT (word) DO UPDATE SET count=$2;")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	// Insert all rows in a single commit
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		log.Println(err)
+	}
+
+	diff.Walk(func(word string, count int) {
+		if count < 2 {
+			return
+		}
+		_, err = tx.Exec(ctx, "ps2", word, int64(count))
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	})
+
+	// Commit the transaction
+	err = tx.Commit(ctx)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func chunkUpdate(ctx context.Context, period string) {
+	var req_url string
+	if period == "focus" {
+		req_url = fmt.Sprintf("%s/api/chunks/last", apiUrl)
+	} else {
+		req_url = fmt.Sprintf("%s/api/snapshot?period=long", apiUrl)
+	}
+	resp, err := http.Get(req_url)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// this is fine for small packets (like chunks)
+	// but for the long-term diff it is inefficnet.
+	decoder := gob.NewDecoder(resp.Body)
+	diff := lib.NewWordDiff()
+	err = decoder.Decode(&diff)
+	if err != nil {
+		//log.Fatal(err)
+		log.Println(err)
+		return
+	}
+	resp.Body.Close()
+
+	if period == "focus" {
+		insertRows(ctx, diff)
+	} else {
+		insertRowsLong(ctx, diff)
+	}
+}
+
 func dbWorker() {
 	ctx := context.Background()
 	var err error
@@ -158,30 +226,27 @@ func dbWorker() {
 	_, err = conn.Exec(ctx, `SELECT add_compression_policy('word_counts', INTERVAL '1 second', if_not_exists => True)`)
 	//checkError(err)
 
+	// long word diffs. This does not need to be a hypertable because we should only ever have one of a word
+	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS long_word_counts(
+		word TEXT NOT NULL,
+		count BIGINT NOT NULL,
+
+		PRIMARY KEY (word),
+		UNIQUE(word)
+	)`)
+	checkError(err)
+
+	chunkCount := 0
+
 	for {
 		<-chunkUpdateChannel
 
-		req_url := fmt.Sprintf("%s/api/chunks/last", apiUrl)
-		resp, err := http.Get(req_url)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		defer resp.Body.Close()
+		chunkUpdate(ctx, "focus")
+		chunkCount++
 
-		// this is fine for small packets (like chunks)
-		// but for the long-term diff it is inefficnet.
-		decoder := gob.NewDecoder(resp.Body)
-		diff := lib.NewWordDiff()
-		err = decoder.Decode(&diff)
-		if err != nil {
-			//log.Fatal(err)
-			log.Println(err)
-			continue
+		if chunkCount%chunkUpdatePeriod == 0 {
+			chunkUpdate(ctx, "long")
 		}
-		resp.Body.Close()
-
-		insertRows(ctx, diff)
 	}
 }
 
