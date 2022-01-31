@@ -35,7 +35,7 @@ export const WordRow = (props) => {
                 alignItems="center"
                 spacing={2}
             >
-            <Grid item md={5} xs={4} overflow="hidden">
+            <Grid item md={5} xs={12} overflow="hidden">
             <p
                 style={{
                 margin: 0,
@@ -55,7 +55,7 @@ export const WordRow = (props) => {
                 }
             </p>
             </Grid>
-            <Grid item md={7} xs={8}>
+            <Grid item md={7} xs={12}>
                 <Grid container alignItems="center" justifyContent="flex-end" textAlign="right" spacing={2}>
                     <Grid item md={3}>
                         {(!props.translation) && <Button

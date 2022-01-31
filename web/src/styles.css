@@ -27,7 +27,8 @@ body {
 
 .table-wrapper {
   max-width: 1000px;
-  margin: auto
+  margin: auto;
+  padding-left: 0;
 }
 
 .stats-p {
