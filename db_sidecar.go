@@ -102,7 +102,7 @@ func insertRows(ctx context.Context, diff *lib.WordDiff) {
 
 	ts := time.Now()
 	diff.Walk(func(word string, count int) {
-		_, err = conn.Exec(ctx, "ps1", ts, word, int16(count))
+		_, err = tx.Exec(ctx, "ps1", ts, word, int16(count))
 		if err != nil {
 			log.Println(err)
 			return
@@ -151,10 +151,11 @@ func dbWorker() {
 		timescaledb.compress,
 		timescaledb.compress_segmentby = 'ts'	
 	)`)
-	checkError(err)
+	// don't know how to not fail on this
+	//checkError(err)
 	// compress data older than 1 hour
 	_, err = conn.Exec(ctx, `SELECT add_compression_policy('word_counts', INTERVAL '1 second', if_not_exists => True)`)
-	checkError(err)
+	//checkError(err)
 
 	for {
 		<-chunkUpdateChannel
