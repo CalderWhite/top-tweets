@@ -11,17 +11,20 @@ import { Flipped } from "react-flip-toolkit";
 
 export const WordRow = (props) => {
   const translate = () => {
-    // the Base64 library has an encodeURI but it removes the padding for you with no option to keep it,
-    // so I snipped this part of the source code and pasted it here, while keeping the padding
-    let urlSafe = Base64.encode(props.word).replace(/[+\/]/g, function (m0) { return m0 == '+' ? '-' : '_'; });
-    fetch('/api/translate?word=' + urlSafe)
-      .then(response => response.json())
-      .then(data => {
-        // NOTE: This improves latency since this would otherwise be updated a max of 1 second later.
-        // this is really bad for coupling. I have to do it because of react-flip-toolkit
-        props.updateTranslation(props.word, data["translation"]);
-      });
-    setShowButton(false);
+    try {
+        // the Base64 library has an encodeURI but it removes the padding for you with no option to keep it,
+        // so I snipped this part of the source code and pasted it here, while keeping the padding
+        let urlSafe = Base64.encode(props.word).replace(/[+\/]/g, function (m0) { return m0 == '+' ? '-' : '_'; });
+        fetch('/api/translate?word=' + urlSafe)
+        .then(response => response.json())
+        .then(data => {
+            // NOTE: This improves latency since this would otherwise be updated a max of 1 second later.
+            // this is really bad for coupling. I have to do it because of react-flip-toolkit
+            props.updateTranslation(props.word, data["translation"]);
+        });
+    } catch(err) {
+        console.log(err)
+    }
   }
   return (
     <Flipped key={props.word} flipId={props.word}>

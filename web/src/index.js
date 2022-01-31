@@ -24,12 +24,16 @@ const App = () => {
   }
 
   const updateData = () => {
-    fetch('/api/words/top')
+    try {
+      fetch('/api/words/top')
       .then(response => response.json())
       .then(data => {
         setTweets(data["total"])
         setData(data["words"])
       });
+    } catch(err) {
+      console.log(err)
+    }
   }
 
   // this is a terrible way of updating translations and is 100% coupled with WordRow.
