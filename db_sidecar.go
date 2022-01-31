@@ -48,6 +48,7 @@ func getApiUrl() string {
 
 func checkError(err error) {
 	if err != nil {
+		log.Println("FATAL. THIS IS FATAL.")
 		log.Fatal(err)
 	}
 }
@@ -187,11 +188,13 @@ func dbWorker() {
 func main() {
 	go func() {
 		for {
+			log.Println("Connecting to db...")
 			dbWorker()
 			time.Sleep(1 * time.Second)
 		}
 	}()
 	for {
+		log.Println("Subscribing to api...")
 		subscribeToAPI()
 		time.Sleep(1 * time.Second)
 	}

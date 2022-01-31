@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	cloud.google.com/go/translate v1.0.0
+	github.com/gin-contrib/gzip v0.0.5
 	github.com/gin-gonic/gin v1.7.7
 	github.com/jackc/pgx/v4 v4.14.1
 	golang.org/x/text v0.3.6

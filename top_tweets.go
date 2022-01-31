@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/translate"
 	"github.com/CalderWhite/top-tweets/lib"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/text/language"
 )
@@ -57,6 +58,10 @@ func translateText(targetLanguage, text string) (string, error) {
 func main() {
 	prod := os.Getenv("TOP_TWEETS_MODE") == "PRODUCTION"
 	r := gin.Default()
+	r.Use(gzip.Gzip(gzip.DefaultCompression,
+		gzip.WithExcludedExtensions([]string{".ico", ".png", ".jpg"}),
+		gzip.WithExcludedPaths([]string{"/api/chunks/stream"}),
+	))
 	var buildRoot string
 	if prod {
 		exec.Command("cp", "-r", "./build", "./tmp").Output()
