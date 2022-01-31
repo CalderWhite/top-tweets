@@ -190,6 +190,8 @@ func streamTweets(tweets chan<- StreamDataSchema) {
 			if err == io.EOF {
 				break
 			} else if errors.Is(err, syscall.ECONNRESET) {
+				log.Println("Cooling off for twitter...")
+				time.Sleep(5 * time.Second)
 				break
 			} else {
 				continue
