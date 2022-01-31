@@ -32,6 +32,19 @@ const App = () => {
       });
   }
 
+  // this is a terrible way of updating translations and is 100% coupled with WordRow.
+  // However, react-flip-toolkit has forced me to do it this way.
+  const updateTranslation = (word, translation) => {
+    let data2 = data.slice()
+    for (let i = 0; i < data2.length; i++) {
+      if (data2[i].word == word) {
+        data2[i].translation = translation;
+      }
+    }
+
+    setData(data2);
+  }
+
   useEffect(() => {
     // TODO: Make this into a web socket
     updateData();
@@ -61,7 +74,14 @@ const App = () => {
         <Flipper flipKey={lst2str(data)}>
           <ul className="table-wrapper">
             {data.map(({wordScore, multiple, count, word, translation}) => (
-              <WordRow word={word} translation={translation} count={count} multiple={multiple} wordScore={wordScore} />
+              <WordRow
+                word={word}
+                translation={translation}
+                count={count}
+                multiple={multiple}
+                wordScore={wordScore}
+                updateTranslation={updateTranslation}
+                />
             ))}
           </ul>
         </Flipper>

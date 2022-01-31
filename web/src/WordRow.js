@@ -5,9 +5,11 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { Base64 } from 'js-base64';
 import { Flipped } from "react-flip-toolkit";
 
+
+// react-flip-tooklkit does not support sub components having their own state.
+// because of this, every WordRow must be immutable after construction...
+
 export const WordRow = (props) => {
-  const [showButton, setShowButton] = useState(true);
-  const [translationText, setTranslation] = useState("");
   const translate = () => {
     // the Base64 library has an encodeURI but it removes the padding for you with no option to keep it,
     // so I snipped this part of the source code and pasted it here, while keeping the padding
@@ -15,18 +17,12 @@ export const WordRow = (props) => {
     fetch('/api/translate?word=' + urlSafe)
       .then(response => response.json())
       .then(data => {
-        // note: This isn't super necessary because it will be set the next time we download /api/words/top
-        setTranslation("(" + data["translation"] + ")");
-        setShowButton(false);
+        // NOTE: This improves latency since this would otherwise be updated a max of 1 second later.
+        // this is really bad for coupling. I have to do it because of react-flip-toolkit
+        props.updateTranslation(props.word, data["translation"]);
       });
     setShowButton(false);
   }
-  useEffect(() => {
-    if (props.translation) {
-        setShowButton(false);
-        setTranslation("(" + props.translation + ")");
-    }
-  })
   return (
     <Flipped key={props.word} flipId={props.word}>
         <li className="list-item card">
@@ -50,14 +46,16 @@ export const WordRow = (props) => {
                 {props.word}
             </p>
             <p className="translation">
-                {/* I blame the cloud translation api. fix this in the future. */}
-                <span dangerouslySetInnerHTML={{ __html: translationText }} />
+                {/* I blame the cloud translation api. I need to fix this in the future. */}
+                {
+                    props.translation && <span dangerouslySetInnerHTML={{ __html: "(" + props.translation + ")" }} />
+                }
             </p>
             </Grid>
             <Grid item md={7} xs={8}>
                 <Grid container alignItems="center" justifyContent="flex-end" textAlign="right" spacing={2}>
                     <Grid item md={3}>
-                        {showButton && <Button
+                        {(!props.translation) && <Button
                         variant="outlined"
                         size="small"
                         onClick={translate}
