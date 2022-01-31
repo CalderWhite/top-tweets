@@ -36,24 +36,30 @@ export const WordRow = (props) => {
                 spacing={2}
             >
             <Grid item md={5} xs={12} overflow="hidden">
-            <p
-                style={{
-                margin: 0,
-                textOverflow: "ellipsis",
-                overflow: "hidden",
-                width: "100%",
-                display: "inline",
-                marginRight: "5px"
-                }}
-            >
-                {props.word}
-            </p>
-            <p className="translation">
-                {/* I blame the cloud translation api. I need to fix this in the future. */}
-                {
-                    props.translation && <span dangerouslySetInnerHTML={{ __html: "(" + props.translation + ")" }} />
-                }
-            </p>
+                <Grid container spacing={0}>
+                    <Grid item md={12} xs={12}>
+                        <p
+                            style={{
+                            margin: 0,
+                            textOverflow: "ellipsis",
+                            overflow: "hidden",
+                            width: "100%",
+                            display: "inline",
+                            marginRight: "5px"
+                            }}
+                        >
+                            {props.word}
+                        </p>
+                    </Grid>
+                    <Grid item md={12} xs={12} display="inline-flex" alignItems="flex-end">
+                        <p className="translation" style={{margin: 0, marginTop: "3px"}}>
+                            {/* I blame the cloud translation api. I need to fix this in the future. */}
+                            {
+                                props.translation && <span dangerouslySetInnerHTML={{ __html: "(" + props.translation + ")" }} />
+                            }
+                        </p>
+                    </Grid>
+                </Grid>
             </Grid>
             <Grid item md={7} xs={12}>
                 <Grid container alignItems="center" justifyContent="flex-end" textAlign="right" spacing={2}>
