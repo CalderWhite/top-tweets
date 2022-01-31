@@ -11,6 +11,12 @@ services:
       - type: bind
         source: ./timescaledb-data
         target: /var/lib/postgresql/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "5"
+        compress: "true"
   top_tweets:
     image: calderwhite/top-tweets
     restart: always
@@ -20,6 +26,7 @@ services:
     environment:
       - TWITTER_BEARER
       - TOP_TWEETS_MODE=PRODUCTION
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/creds/translate-creds.json
     volumes:
       - type: bind
         source: ./backups
@@ -27,7 +34,22 @@ services:
       - type: bind
         source: /etc/letsencrypt
         target: /etc/letsencrypt
+      - type: bind
+        source: ./creds
+        target: /app/creds
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "5"
+        compress: "true"
   db_sidecar:
     image: calderwhite/db-sidecar
     environment:
       - TOP_TWEETS_MODE=PRODUCTION
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "5"
+        compress: "true"

@@ -1,13 +1,44 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
 
+	"cloud.google.com/go/translate"
 	"github.com/CalderWhite/top-tweets/lib"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/text/language"
 )
+
+var translateCache map[string]string = make(map[string]string)
+
+func translateText(targetLanguage, text string) (string, error) {
+	// text := "The Go Gopher is cute"
+	ctx := context.Background()
+
+	lang, err := language.Parse(targetLanguage)
+	if err != nil {
+		return "", fmt.Errorf("language.Parse: %v", err)
+	}
+
+	client, err := translate.NewClient(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
+	resp, err := client.Translate(ctx, []string{text}, lang, nil)
+	if err != nil {
+		return "", fmt.Errorf("Translate: %v", err)
+	}
+	if len(resp) == 0 {
+		return "", fmt.Errorf("Translate returned empty response to text: %s", text)
+	}
+	return resp[0].Text, nil
+}
 
 /**
  * NOTE: Caching should be considered for all endpoints, since they all run their respective queries fully.
@@ -18,6 +49,29 @@ func main() {
 	r.Static("/static", "./build/static")
 
 	api := r.Group("/api")
+
+	api.GET("/translate/:word", func(c *gin.Context) {
+		cacheHit, ok := translateCache[c.Param("word")]
+		if ok {
+			c.JSON(200, gin.H{
+				"translation": cacheHit,
+			})
+		} else {
+			translation, err := translateText("en", c.Param("word"))
+			if err != nil {
+				c.JSON(500, gin.H{
+					"message": fmt.Sprintf("%v", err),
+					"status":  "error",
+					"code":    500,
+				})
+			} else {
+				translateCache[c.Param("word")] = translation
+				c.JSON(200, gin.H{
+					"translation": translation,
+				})
+			}
+		}
+	})
 
 	/**
 	 * Gets the top [limit] words (default 100), adjusted by the longGlobalDiff.

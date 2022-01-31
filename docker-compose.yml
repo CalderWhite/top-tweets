@@ -18,10 +18,14 @@ services:
       - "80:8080"
     environment:
       - TWITTER_BEARER
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/creds/translate-creds.json
     volumes:
       - type: bind
         source: ./backups
         target: /app/backups
+      - type: bind
+        source: ./creds
+        target: /app/creds
   db_sidecar:
     build: 
       context: .
