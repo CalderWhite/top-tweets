@@ -50,7 +50,8 @@ export const WordRow = (props) => {
                 {props.word}
             </p>
             <p className="translation">
-                {translationText}
+                {/* I blame the cloud translation api. fix this in the future. */}
+                <span dangerouslySetInnerHTML={{ __html: translationText }} />
             </p>
             </Grid>
             <Grid item md={7} xs={8}>
