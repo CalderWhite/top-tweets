@@ -2,14 +2,17 @@ import React, { useState, useEffect } from "react";
 import Button from '@mui/material/Button';
 import Grid from "@mui/material/Grid";
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-
-import {Flipped} from "react-flip-toolkit";
+import { Base64 } from 'js-base64';
+import { Flipped } from "react-flip-toolkit";
 
 export const WordRow = (props) => {
   const [showButton, setShowButton] = useState(true);
   const [translationText, setTranslation] = useState("");
   const translate = () => {
-    fetch('/api/translate?word=' + props.word)
+    // the Base64 library has an encodeURI but it removes the padding for you with no option to keep it,
+    // so I snipped this part of the source code and pasted it here, while keeping the padding
+    let urlSafe = Base64.encode(props.word).replace(/[+\/]/g, function (m0) { return m0 == '+' ? '-' : '_'; });
+    fetch('/api/translate?word=' + urlSafe)
       .then(response => response.json())
       .then(data => {
         // note: This isn't super necessary because it will be set the next time we download /api/words/top

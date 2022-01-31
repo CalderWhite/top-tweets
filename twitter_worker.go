@@ -157,6 +157,9 @@ func restoreFromBackup() {
 	AGG_SIZE = recovery.AggSize
 	FOCUS_PERIOD = recovery.FocusPeriod
 	translateCache = recovery.TranslationCache
+	if translateCache == nil {
+		translateCache = make(map[string]string)
+	}
 	wordDiffQueue.SetQueue(recovery.Diffs)
 }
 

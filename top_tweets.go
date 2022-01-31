@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -78,7 +79,17 @@ func main() {
 			})
 			return
 		}
-		word := wordList[0]
+		wordb64 := wordList[0]
+		wordb, err := base64.URLEncoding.DecodeString(wordb64)
+		if err != nil {
+			c.JSON(500, gin.H{
+				"message": fmt.Sprintf("%v", err),
+				"status":  "error",
+				"code":    500,
+			})
+			return
+		}
+		word := string(wordb)
 		cacheHit, ok := translateCache[word]
 		if ok {
 			c.JSON(200, gin.H{
