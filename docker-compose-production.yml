@@ -37,6 +37,8 @@ services:
       - type: bind
         source: ./creds
         target: /app/creds
+    tmpfs:
+      - /app/tmp/build
     logging:
       driver: "json-file"
       options:

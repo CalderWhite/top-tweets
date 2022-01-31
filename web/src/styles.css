@@ -34,3 +34,9 @@ body {
   font-size: 1.6rem;
   margin: 0;
 }
+
+.translation {
+  display: inline;
+  margin: "3px";
+  font-size: 15px;
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strconv"
 
 	"cloud.google.com/go/translate"
@@ -13,7 +14,15 @@ import (
 	"golang.org/x/text/language"
 )
 
+// NOTE: This is now 100% coupled with twitter_worker because of the translateCache
+//       twitter_worker won't run without the translateCache since it expects it for backups.
 var translateCache map[string]string = make(map[string]string)
+
+type WordPair struct {
+	Word        string `json:"word"`
+	Count       int    `json:"count"`
+	Translation string `json:"translation"`
+}
 
 func translateText(targetLanguage, text string) (string, error) {
 	// text := "The Go Gopher is cute"
@@ -45,19 +54,38 @@ func translateText(targetLanguage, text string) (string, error) {
  */
 
 func main() {
+	prod := os.Getenv("TOP_TWEETS_MODE") == "PRODUCTION"
 	r := gin.Default()
-	r.Static("/static", "./build/static")
+	var buildRoot string
+	if prod {
+		exec.Command("cp", "-r", "./build", "./tmp").Output()
+		buildRoot = "tmp/build"
+	} else {
+		buildRoot = "build"
+	}
+	r.Static("/static", buildRoot+"/static")
 
 	api := r.Group("/api")
 
-	api.GET("/translate/:word", func(c *gin.Context) {
-		cacheHit, ok := translateCache[c.Param("word")]
+	api.GET("/translate", func(c *gin.Context) {
+		q := c.Request.URL.Query()
+		wordList, wordFound := q["word"]
+		if !wordFound {
+			c.JSON(400, gin.H{
+				"message": "You must provide a <word> in the query string.",
+				"status":  "error",
+				"code":    400,
+			})
+			return
+		}
+		word := wordList[0]
+		cacheHit, ok := translateCache[word]
 		if ok {
 			c.JSON(200, gin.H{
 				"translation": cacheHit,
 			})
 		} else {
-			translation, err := translateText("en", c.Param("word"))
+			translation, err := translateText("en", word)
 			if err != nil {
 				c.JSON(500, gin.H{
 					"message": fmt.Sprintf("%v", err),
@@ -65,7 +93,7 @@ func main() {
 					"code":    500,
 				})
 			} else {
-				translateCache[c.Param("word")] = translation
+				translateCache[word] = translation
 				c.JSON(200, gin.H{
 					"translation": translation,
 				})
@@ -106,6 +134,13 @@ func main() {
 		// reverse words so highest is first.
 		for i, j := 0, len(words)-1; i < j; i, j = i+1, j-1 {
 			words[i], words[j] = words[j], words[i]
+		}
+
+		for i, wordPair := range words {
+			translation, foundTranslation := translateCache[wordPair.Word]
+			if foundTranslation {
+				words[i].Translation = translation
+			}
 		}
 
 		c.JSON(200, gin.H{
@@ -177,21 +212,39 @@ func main() {
 	 * period = [ focus | long ]
 	 * For the [long] period, we use longGlobalDiff. For [focus] we use globalDiff.
 	 */
-	api.GET("/word/:word", func(c *gin.Context) {
+	api.GET("/word", func(c *gin.Context) {
 		q := c.Request.URL.Query()
+		wordList, wordFound := q["word"]
+		if !wordFound {
+			c.JSON(400, gin.H{
+				"message": "You must provide a <word> in the query string.",
+				"status":  "error",
+				"code":    400,
+			})
+			return
+		}
+		word := wordList[0]
 		period, periodFound := q["period"]
 
+		translation, foundTranslation := translateCache[word]
+		tText := ""
+		if foundTranslation {
+			tText = translation
+		}
+
 		if !periodFound || period[0] == "focus" {
-			count := globalDiff.Get(c.Param("word"))
+			count := globalDiff.Get(word)
 			c.JSON(200, WordPair{
-				Word:  c.Param("word"),
-				Count: count,
+				Word:        word,
+				Count:       count,
+				Translation: tText,
 			})
 		} else if period[0] == "long" {
-			count := longGlobalDiff.Get(c.Param("word"))
+			count := longGlobalDiff.Get(word)
 			c.JSON(200, WordPair{
-				Word:  c.Param("word"),
-				Count: count,
+				Word:        word,
+				Count:       count,
+				Translation: tText,
 			})
 		} else {
 			c.JSON(400, gin.H{
@@ -249,14 +302,13 @@ func main() {
 	})
 
 	r.GET("/favicon.ico", func(c *gin.Context) {
-		c.File("build/favicon.ico")
+		c.File(buildRoot + "/favicon.ico")
 	})
 
 	r.GET("/", func(c *gin.Context) {
-		c.File("build/index.html")
+		c.File(buildRoot + "/index.html")
 	})
 
-	prod := os.Getenv("TOP_TWEETS_MODE") == "PRODUCTION"
 	go tweetsWorker()
 	if !prod {
 		r.Run("0.0.0.0:8080")

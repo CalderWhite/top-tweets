@@ -75,16 +75,12 @@ type StreamDataSchema struct {
 	} `json:"data"`
 }
 
-type WordPair struct {
-	Word  string `json:"word"`
-	Count int    `json:"count"`
-}
-
 type WordRankingPair struct {
-	Word      string  `json:"word"`
-	Count     int     `json:"count"`
-	Multiple  float32 `json:"multiple"`
-	WordScore float32 `json:"wordScore"`
+	Word        string  `json:"word"`
+	Translation string  `json:"translation"`
+	Count       int     `json:"count"`
+	Multiple    float32 `json:"multiple"`
+	WordScore   float32 `json:"wordScore"`
 }
 
 // we could use the database for this, but this gobbing this struct
@@ -97,6 +93,7 @@ type RecoveryPoint struct {
 	AggSize          int
 	FocusPeriod      int
 	Diffs            *lib.CircularQueuePublic
+	TranslationCache map[string]string
 }
 
 var wordDiffQueue *lib.CircularQueue = lib.NewCircularQueue(FOCUS_PERIOD)
@@ -118,6 +115,7 @@ func createBackup() {
 		AggSize:          AGG_SIZE,
 		FocusPeriod:      FOCUS_PERIOD,
 		Diffs:            wordDiffQueue.Public(),
+		TranslationCache: translateCache,
 	}
 	gob.Register((wordDiffQueue.Last()).(lib.WordDiff))
 
@@ -158,6 +156,7 @@ func restoreFromBackup() {
 	globalDiff = recovery.FocusDiff
 	AGG_SIZE = recovery.AggSize
 	FOCUS_PERIOD = recovery.FocusPeriod
+	translateCache = recovery.TranslationCache
 	wordDiffQueue.SetQueue(recovery.Diffs)
 }
 
