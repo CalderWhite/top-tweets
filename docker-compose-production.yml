@@ -27,6 +27,7 @@ services:
       - TWITTER_BEARER
       - TOP_TWEETS_MODE=PRODUCTION
       - GOOGLE_APPLICATION_CREDENTIALS=/app/creds/translate-creds.json
+      - GIN_MODE=release
     volumes:
       - type: bind
         source: ./backups
