@@ -26,9 +26,18 @@ body {
 }
 
 .table-wrapper {
-  max-width: 800px;
   margin: auto;
   padding-left: 0;
+  max-width: 800px;
+}
+
+.shuffle-list {
+  padding-left: 0;
+}
+
+.shuffle-list > li {
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .stats-p {
@@ -40,4 +49,33 @@ body {
   display: inline;
   margin: "3px";
   font-size: 15px;
+}
+
+.big {
+  margin: 0;
+}
+.sub-big {
+  margin-top: 0;
+  font-weight: 300;
+  color: #a3a3a3;
+  font-size: 1.5rem;
+}
+
+.total-tweets {
+  margin: 15px;
+  text-align: left;
+  font-family: Consolas, monaco, monospace;
+  font-size: 14px;
+  background: white;
+  margin: 0;
+  margin-top: 0.5rem;
+}
+
+.explanation > p {
+  font-size: 1rem;
+}
+
+.gradient-grades > div > p {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
 }

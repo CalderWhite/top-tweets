@@ -13,8 +13,8 @@ export const WordRow = (props) => {
   let letterGrade = "A+"
 
   const getLetterGrade = (wordScore) => {
-    let grades =      ["A+", "A", "A-", "B+", "B", "B-", "C", "D"];
-    let breakPoints = [0.9,  0.7,  0.6,  0.5,  0.4, 0.3, 0.2, 0.0];
+    let grades =      ["A+", "A", "A-", "B+", "B", "B-", "C", "D", "D-"];
+    let breakPoints = [0.9,  0.7,  0.6,  0.5,  0.4, 0.3, 0.2, 0.1, 0.0];
     for (let i = 0; i < breakPoints.length; i++) {
         if (wordScore >= breakPoints[i]) {
             return grades[i];
@@ -82,6 +82,7 @@ export const WordRow = (props) => {
                         variant="outlined"
                         size="small"
                         onClick={translate}
+                        style={{marginTop: "-5px"}}
                         >
                         Translate
                         </Button>}
