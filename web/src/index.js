@@ -87,13 +87,23 @@ const App = () => {
               </p>
             </span>
           </Grid>
+          <Grid item md={12} className="gradient-sub">
+            <Grid container alignItems="flex-start">
+              <Grid item md={6} sx={{display: "inline-flex"}} justifyContent="flex-start">
+                <span>Irrelevant word, not much traction.</span>
+              </Grid>
+              <Grid item md={6} sx={{display: "inline-flex"}} justifyContent="flex-end">
+                <span><b>Explosive</b> use of this word</span>
+              </Grid>
+            </Grid>
+          </Grid>
           <Grid item md={12}>
             <Box sx={{width: "100%", height: "1rem", background: 'linear-gradient(to right, #704141, #ff0000)'}}></Box>
           </Grid>
           <Grid item md={12}>
             <Grid container className="gradient-grades">
               <Grid item md={2} textAlign="left">
-                <p>D</p>
+                <p>D-</p>
               </Grid>
               <Grid item md={2} textAlign="center">
                 <p>C</p>

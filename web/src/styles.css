@@ -80,3 +80,13 @@ body {
   margin-top: 1rem;
   margin-bottom: 1rem;
 }
+
+.gradient-sub > div > div > span {
+  font-size: 1rem;
+  padding-bottom: 0.5rem;
+}
+
+#shuffle {
+  /* This is pretty hackey */
+  margin-top: -20px;
+}
