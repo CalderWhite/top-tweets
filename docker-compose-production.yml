@@ -7,6 +7,7 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_PASSWORD=password
+    restart: always
     volumes:
       - type: bind
         source: ./timescaledb-data
@@ -50,6 +51,7 @@ services:
     image: calderwhite/db-sidecar
     environment:
       - TOP_TWEETS_MODE=PRODUCTION
+    restart: always
     logging:
       driver: "json-file"
       options:
