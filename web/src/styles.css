@@ -43,6 +43,7 @@ body {
 .stats-p {
   font-size: 1.2rem;
   margin: 0;
+  font-weight: 500;
 }
 
 .translation {
