@@ -176,7 +176,8 @@ func streamTweets(tweets chan<- StreamDataSchema) {
 
 	if resp.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(resp.Body)
-		log.Fatal("Did not get 200 OK response from twitter API.", string(body))
+		log.Println("Did not get 200 OK response from twitter API.", string(body))
+		time.Sleep(3 * time.Second)
 		return
 	}
 
