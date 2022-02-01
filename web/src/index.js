@@ -79,7 +79,7 @@ const App = () => {
         </Grid>
         <Grid container className="gradient">
           <Grid item md={12}>
-            <h5 style={{marginTop: "1rem", marginBottom: 0}}>Word Score</h5>
+            <h5 style={{marginTop: 0, marginBottom: 0}}>Word Score</h5>
             <span className="explanation">
               <p>
                 Each word is given a score based on the Top Tweets algorithm that shows its level of interest and relevance to world events.
@@ -90,10 +90,10 @@ const App = () => {
           <Grid item md={12} className="gradient-sub">
             <Grid container alignItems="flex-start">
               <Grid item md={6} sx={{display: "inline-flex"}} justifyContent="flex-start">
-                <span>Irrelevant word, not much traction.</span>
+                <span><b>Irrelevant</b> word, not much traction.</span>
               </Grid>
               <Grid item md={6} sx={{display: "inline-flex"}} justifyContent="flex-end">
-                <span><b>Explosive</b> use of this word</span>
+                <span><b>Explosive</b> word, tons of traction</span>
               </Grid>
             </Grid>
           </Grid>
