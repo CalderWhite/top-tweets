@@ -3,7 +3,7 @@
 }
 
 body {
-  font-size: 2.5rem;
+  font-size: 1.8rem;
   font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI",
     "Roboto", "Helvetica Neue", Arial, sans-serif;
 
@@ -26,13 +26,13 @@ body {
 }
 
 .table-wrapper {
-  max-width: 1000px;
+  max-width: 800px;
   margin: auto;
   padding-left: 0;
 }
 
 .stats-p {
-  font-size: 1.6rem;
+  font-size: 1.2rem;
   margin: 0;
 }
 

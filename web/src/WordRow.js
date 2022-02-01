@@ -10,6 +10,20 @@ import { Flipped } from "react-flip-toolkit";
 // because of this, every WordRow must be immutable after construction...
 
 export const WordRow = (props) => {
+  let letterGrade = "A+"
+
+  const getLetterGrade = (wordScore) => {
+    let grades =      ["A+", "A", "A-", "B+", "B", "B-", "C", "D"];
+    let breakPoints = [0.9,  0.7,  0.6,  0.5,  0.4, 0.3, 0.2, 0.0];
+    for (let i = 0; i < breakPoints.length; i++) {
+        if (wordScore >= breakPoints[i]) {
+            return grades[i];
+        }
+    }
+
+    return grades[grades.length - 1];
+  }
+
   const translate = () => {
     try {
         // the Base64 library has an encodeURI but it removes the padding for you with no option to keep it,
@@ -62,7 +76,7 @@ export const WordRow = (props) => {
                 </Grid>
             </Grid>
             <Grid item md={7} xs={12}>
-                <Grid container alignItems="center" justifyContent="flex-end" textAlign="right" spacing={2}>
+                <Grid container alignItems="center" justifyContent="flex-end" textAlign="right" spacing={4}>
                     <Grid item md={3}>
                         {(!props.translation) && <Button
                         variant="outlined"
@@ -72,14 +86,8 @@ export const WordRow = (props) => {
                         Translate
                         </Button>}
                     </Grid>
-                    <Grid item md={2}>
-                        <p className="stats-p">{Math.round(props.wordScore * 1000) / 1000}</p>
-                    </Grid>
-                    <Grid item md={2}>
-                        <p className="stats-p">{Math.round(props.multiple * 100) / 100}</p>
-                    </Grid>
-                    <Grid item md={2}>
-                        <p className="stats-p">{props.count}</p>
+                    <Grid item md={1} textAlign="left">
+                        <p className="stats-p">{getLetterGrade(props.wordScore)}</p>
                     </Grid>
                     <Grid item md={3}>
                         <Grid container justifyContent="center" alignItems="center">
