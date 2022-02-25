@@ -35,6 +35,10 @@ export const WordRow = (props) => {
       return getEmoji(wordScore) == "";
   }
 
+  const round = (n, digits) => {
+      return Math.floor((n * Math.pow(10, digits))) / Math.pow(10, digits)
+  }
+
   const translate = () => {
     try {
         // the Base64 library has an encodeURI but it removes the padding for you with no option to keep it,
@@ -103,8 +107,9 @@ export const WordRow = (props) => {
                             {getEmoji(props.wordScore)}
                         </Grid>                
                     )}
-                    <Grid item md={1} textAlign="left">
+                    <Grid item md={4} textAlign="left">
                         <p className="stats-p">{getLetterGrade(props.wordScore)}</p>
+                        <p style={{fontSize: "1rem", fontWeight: 400, margin: 0}}>({`${round(props.wordScore, 2)} ${round(props.multiple, 1)}x ${props.count}`})</p>
                     </Grid>
                     <Grid item md={3}>
                         <Grid container justifyContent="center" alignItems="center">

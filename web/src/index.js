@@ -27,11 +27,11 @@ const App = () => {
   const updateData = () => {
     try {
       fetch('/api/words/top')
-      .then(response => response.json())
-      .then(data => {
-        setTweets(data["total"])
-        setData(data["words"])
-      });
+        .then(response => response.json())
+        .then(data => {
+          setTweets(data["total"])
+          setData(data["words"])
+        });
     } catch(err) {
       console.log(err)
     }
