@@ -195,10 +195,10 @@ func streamTweets(tweets chan<- StreamDataSchema) {
 				time.Sleep(5 * time.Second)
 				break
 			} else {
-                log.Println("Got an unknown error, sleeping for 1 second and restarting:")
-                log.Println(err)
-                time.Sleep(1 * time.Second)
-				continue
+				log.Println("Got an unknown error, sleeping for 1 second and restarting:")
+				log.Println(err)
+				time.Sleep(1 * time.Second)
+				break
 			}
 		}
 
