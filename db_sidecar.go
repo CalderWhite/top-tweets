@@ -232,8 +232,8 @@ func dbWorker() {
 		count BIGINT NOT NULL,
 
 		PRIMARY KEY (word),
-		UNIQUE(word)
 	)`)
+	// NOTE: Used to have UNIQUE(word). This is bad for performance and was removed.
 	checkError(err)
 
 	chunkCount := 0
