@@ -104,6 +104,8 @@ var globalTweetCount int64
 var topCache []WordRankingPair = make([]WordRankingPair, 100)
 
 func createBackup() {
+	log.Println("Starting backup")
+	t1 := time.Now().UnixMilli()
 	longGlobalDiff.Lock()
 	defer longGlobalDiff.Unlock()
 	// we don't read from the individual members of the queue, so we can get away with
@@ -130,6 +132,9 @@ func createBackup() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	t2 := time.Now().UnixMilli()
+	log.Printf("createBackup: %dms\n", (t2 - t1))
 }
 
 func restoreFromBackup() {
@@ -189,6 +194,7 @@ func streamTweets(tweets chan<- StreamDataSchema) {
 			log.Println("Got error while reading bytes:", err)
 			// try to read again. Usually it is because the twitter API had nothing to give.
 			if err == io.EOF {
+				log.Println("EOF Error.")
 				break
 			} else if errors.Is(err, syscall.ECONNRESET) {
 				log.Println("Cooling off for twitter...")
@@ -292,7 +298,7 @@ func getTopWorker() {
 		topCache = getTop(100)
 
 		t2 := time.Now().UnixMilli()
-		log.Printf("getTop(): %dms\n", (t2 - t1))
+		// log.Printf("getTop(): %dms\n", (t2 - t1))
 		time.Sleep(time.Duration(targetPeriod-(t2-t1)) * time.Millisecond)
 	}
 }
