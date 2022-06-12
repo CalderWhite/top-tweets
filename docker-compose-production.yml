@@ -15,7 +15,7 @@ services:
     logging:
       driver: "json-file"
       options:
-        max-size: "200k"
+        max-size: "1000k"
         max-file: "5"
         compress: "true"
   top_tweets:

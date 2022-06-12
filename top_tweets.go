@@ -57,11 +57,12 @@ func translateText(targetLanguage, text string) (string, error) {
 
 func main() {
 	prod := os.Getenv("TOP_TWEETS_MODE") == "PRODUCTION"
-	r := gin.Default()
+	r := gin.New()
 	r.Use(gzip.Gzip(gzip.DefaultCompression,
 		gzip.WithExcludedExtensions([]string{".ico", ".png", ".jpg"}),
 		gzip.WithExcludedPaths([]string{"/api/chunks/stream"}),
-	))
+	), gin.LoggerWithWriter(gin.DefaultWriter, "/api/words/top"),
+       gin.Recovery())
 	var buildRoot string
 	if prod {
 		exec.Command("cp", "-r", "./build", "./tmp").Output()

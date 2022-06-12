@@ -61,7 +61,7 @@ const (
 	minMultiple      float32 = 2
 	maxMultiple      float32 = 15
 	minCount         float32 = 100
-	maxAdjustedCount float32 = 2000
+	maxAdjustedCount float32 = 3000
 )
 
 const recoveryFileName = "backups/top_tweets_recovery.dat"
@@ -357,6 +357,10 @@ func getTop(topAmount int) []WordRankingPair {
 	// })
 
 	globalDiff.WalkUnlocked(func(word string, count int) {
+        // XXX: Special testing rule to get rid of hashtags
+        if word[0] == '#' {
+            return
+        }
 		// if the count is already below the minCount, don't bother
 		if count < int(minCount) {
 			return
@@ -383,8 +387,8 @@ func getTop(topAmount int) []WordRankingPair {
 
 		adjustedCount := count - int(longCount/adjustmentRatio)
 		// secret sauce formula. maybe change some of these values to be more empirical and based on statistics.
-		wordScore := (min(multiple-minMultiple, maxMultiple)/maxMultiple)*0.4 +
-			min(float32(adjustedCount)-minCount, maxAdjustedCount)/maxAdjustedCount*0.6
+		wordScore := (min(multiple-minMultiple, maxMultiple)/maxMultiple)*0.5 +
+			min(float32(count), maxAdjustedCount)/maxAdjustedCount*0.5
 
 		if adjustedCount > int(minCount) && multiple > minMultiple && wordScore > top[0].WordScore {
 			foundNonZero = true
