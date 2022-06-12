@@ -49,7 +49,7 @@ var FOCUS_PERIOD int = 300
 // after this many tweets, we will prune all (1) counts in longGlobalDiff, and (0) counts in globalDiff
 // 0 counts have literally no impact, and 1 counts have an infinitesimal impact on the longGlobalDiff when divided by
 // the globalTweetCount
-// we use 36k because we get a min of 40 tweets/second, which means this will prune every ~15 minutes
+// we use 360k because we get a min of 40 tweets/second, which means this will prune every 2.5 hours
 // this means more memory usage, but also more accurate long term averages since it will pick up less frequent words
 const longPrunePeriod int = 360000
 
